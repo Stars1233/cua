@@ -163,9 +163,11 @@ async def main():
       loop="uitars",
       model=LLM(provider="mlxvlm", name="mlx-community/UI-TARS-1.5-7B-6bit")
     )
-    await agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide")
+    async for result in agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide"):
+        print(result)
 
-main()
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 For ready-to-use examples, check out our [Notebooks](./notebooks/) collection.
@@ -273,6 +275,29 @@ await computer.interface.run_command(cmd)       # Run shell command
 
 # Accessibility
 await computer.interface.get_accessibility_tree() # Get accessibility tree
+
+# Python Virtual Environment Operations
+await computer.venv_install("demo_venv", ["requests", "macos-pyxa"]) # Install packages in a virtual environment
+await computer.venv_cmd("demo_venv", "python -c 'import requests; print(requests.get(`https://httpbin.org/ip`).json())'") # Run a shell command in a virtual environment
+await computer.venv_exec("demo_venv", python_function_or_code, *args, **kwargs) # Run a Python function in a virtual environment and return the result / raise an exception
+
+# Example: Use sandboxed functions to execute code in a C/ua Container
+from computer.helpers import sandboxed
+
+@sandboxed("demo_venv")
+def greet_and_print(name):
+    """Get the HTML of the current Safari tab"""
+    import PyXA
+    safari = PyXA.Application("Safari")
+    html = safari.current_document.source()
+    print(f"Hello from inside the container, {name}!")
+    return {"greeted": name, "safari_html": html}
+
+# When a @sandboxed function is called, it will execute in the container
+result = await greet_and_print("C/ua")
+# Result: {"greeted": "C/ua", "safari_html": "<html>...</html>"}
+# stdout and stderr are also captured and printed / raised
+print("Result from sandboxed function:", result)
 ```
 
 ## ComputerAgent Reference

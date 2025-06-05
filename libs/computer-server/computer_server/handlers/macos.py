@@ -1,4 +1,7 @@
 import pyautogui
+from pynput.mouse import Button, Controller as MouseController
+from pynput.keyboard import Key, Controller as KeyboardController
+import time
 import base64
 from io import BytesIO
 from typing import Optional, Dict, Any, List, Tuple
@@ -336,7 +339,6 @@ class UIElement:
             "position": position,
             "size": size,
             "enabled": self.enabled,
-            "focused": self.focused,
             "bbox": self.bbox,
             "visible_bbox": self.visible_bbox,
             "children": children_to_dict(self.children),
@@ -527,11 +529,14 @@ class MacOSAccessibilityHandler(BaseAccessibilityHandler):
 
 class MacOSAutomationHandler(BaseAutomationHandler):
     # Mouse Actions
+    mouse = MouseController()
+    keyboard = KeyboardController()
+
     async def left_click(self, x: Optional[int] = None, y: Optional[int] = None) -> Dict[str, Any]:
         try:
             if x is not None and y is not None:
-                pyautogui.moveTo(x, y)
-            pyautogui.click()
+                self.mouse.position = (x, y)
+            self.mouse.click(Button.left, 1)
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -539,8 +544,8 @@ class MacOSAutomationHandler(BaseAutomationHandler):
     async def right_click(self, x: Optional[int] = None, y: Optional[int] = None) -> Dict[str, Any]:
         try:
             if x is not None and y is not None:
-                pyautogui.moveTo(x, y)
-            pyautogui.rightClick()
+                self.mouse.position = (x, y)
+            self.mouse.click(Button.right, 1)
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -550,15 +555,15 @@ class MacOSAutomationHandler(BaseAutomationHandler):
     ) -> Dict[str, Any]:
         try:
             if x is not None and y is not None:
-                pyautogui.moveTo(x, y)
-            pyautogui.doubleClick(interval=0.1)
+                self.mouse.position = (x, y)
+            self.mouse.click(Button.left, 2)
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
     async def move_cursor(self, x: int, y: int) -> Dict[str, Any]:
         try:
-            pyautogui.moveTo(x, y)
+            self.mouse.position = (x, y)
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -567,9 +572,26 @@ class MacOSAutomationHandler(BaseAutomationHandler):
         self, x: int, y: int, button: str = "left", duration: float = 0.5
     ) -> Dict[str, Any]:
         try:
-            pyautogui.dragTo(x, y, button=button, duration=duration)
+            btn = Button.left if button == "left" else Button.right
+            # Press
+            self.mouse.press(btn)
+            # Move with sleep to simulate drag duration
+            start = self.mouse.position
+            steps = 20
+            start_x, start_y = start
+            dx = (x - start_x) / steps
+            dy = (y - start_y) / steps
+            for i in range(steps):
+                self.mouse.position = (int(start_x + dx * (i + 1)), int(start_y + dy * (i + 1)))
+                time.sleep(duration / steps)
+            # Release
+            self.mouse.release(btn)
             return {"success": True}
         except Exception as e:
+            try:
+                self.mouse.release(btn)
+            except:
+                pass
             return {"success": False, "error": str(e)}
 
     async def drag(
@@ -578,29 +600,19 @@ class MacOSAutomationHandler(BaseAutomationHandler):
         try:
             if not path or len(path) < 2:
                 return {"success": False, "error": "Path must contain at least 2 points"}
-            
+            btn = Button.left if button == "left" else Button.right
             # Move to the first point
-            start_x, start_y = path[0]
-            pyautogui.moveTo(start_x, start_y)
-            
-            # Press the mouse button
-            pyautogui.mouseDown(button=button)
-            
-            # Calculate time between points to distribute duration evenly
+            self.mouse.position = path[0]
+            self.mouse.press(btn)
             step_duration = duration / (len(path) - 1) if len(path) > 1 else duration
-            
-            # Move through each subsequent point
             for x, y in path[1:]:
-                pyautogui.moveTo(x, y, duration=step_duration)
-            
-            # Release the mouse button
-            pyautogui.mouseUp(button=button)
-            
+                self.mouse.position = (x, y)
+                time.sleep(step_duration)
+            self.mouse.release(btn)
             return {"success": True}
         except Exception as e:
-            # Make sure to release the mouse button if an error occurs
             try:
-                pyautogui.mouseUp(button=button)
+                self.mouse.release(btn)
             except:
                 pass
             return {"success": False, "error": str(e)}
@@ -608,7 +620,7 @@ class MacOSAutomationHandler(BaseAutomationHandler):
     # Keyboard Actions
     async def type_text(self, text: str) -> Dict[str, Any]:
         try:
-            pyautogui.write(text)
+            self.keyboard.type(text)
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -630,14 +642,14 @@ class MacOSAutomationHandler(BaseAutomationHandler):
     # Scrolling Actions
     async def scroll_down(self, clicks: int = 1) -> Dict[str, Any]:
         try:
-            pyautogui.scroll(-clicks)
+            self.mouse.scroll(0, -clicks)
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
     async def scroll_up(self, clicks: int = 1) -> Dict[str, Any]:
         try:
-            pyautogui.scroll(clicks)
+            self.mouse.scroll(0, clicks)
             return {"success": True}
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -668,8 +680,8 @@ class MacOSAutomationHandler(BaseAutomationHandler):
 
     async def get_cursor_position(self) -> Dict[str, Any]:
         try:
-            pos = pyautogui.position()
-            return {"success": True, "position": {"x": pos.x, "y": pos.y}}
+            x, y = self.mouse.position
+            return {"success": True, "position": {"x": x, "y": y}}
         except Exception as e:
             return {"success": False, "error": str(e)}
 

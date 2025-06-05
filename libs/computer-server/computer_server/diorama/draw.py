@@ -377,7 +377,7 @@ def draw_desktop_screenshot(app_whitelist: List[str] = None, all_windows: List[D
         
         dock_orientation = "side" if dock_bounds["width"] < dock_bounds["height"] else "bottom"
         
-        menubar_length = max(item["bounds"]["x"] + item["bounds"]["width"] for item in menubar_items)
+        menubar_length = max(item["bounds"]["x"] + item["bounds"]["width"] for item in menubar_items) if menubar_items else 0
                 
         # Calculate bounds of app windows
         app_bounds = {

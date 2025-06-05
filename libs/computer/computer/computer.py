@@ -11,6 +11,7 @@ import json
 import logging
 from .telemetry import record_computer_initialization
 import os
+from . import helpers
 
 # Import provider related modules
 from .providers.base import VMProviderType
@@ -460,6 +461,10 @@ class Computer:
 
             # Set the initialization flag and clear the initializing flag
             self._initialized = True
+            
+            # Set this instance as the default computer for remote decorators
+            helpers.set_default_computer(self)
+            
             self.logger.info("Computer successfully initialized")
         except Exception as e:
             raise
@@ -722,3 +727,177 @@ class Computer:
             tuple[float, float]: (x, y) coordinates in screenshot space
         """
         return await self.interface.to_screenshot_coordinates(x, y)
+
+
+    # Add virtual environment management functions to computer interface
+    async def venv_install(self, venv_name: str, requirements: list[str]) -> tuple[str, str]:
+        """Install packages in a virtual environment.
+        
+        Args:
+            venv_name: Name of the virtual environment
+            requirements: List of package requirements to install
+            
+        Returns:
+            Tuple of (stdout, stderr) from the installation command
+        """
+        requirements = requirements or []
+
+        # Create virtual environment if it doesn't exist
+        venv_path = f"~/.venvs/{venv_name}"
+        create_cmd = f"mkdir -p ~/.venvs && python3 -m venv {venv_path}"
+        
+        # Check if venv exists, if not create it
+        check_cmd = f"test -d {venv_path} || ({create_cmd})"
+        _, _ = await self.interface.run_command(check_cmd)
+        
+        # Install packages
+        requirements_str = " ".join(requirements)
+        install_cmd = f". {venv_path}/bin/activate && pip install {requirements_str}"
+        return await self.interface.run_command(install_cmd)
+    
+    async def venv_cmd(self, venv_name: str, command: str) -> tuple[str, str]:
+        """Execute a shell command in a virtual environment.
+        
+        Args:
+            venv_name: Name of the virtual environment
+            command: Shell command to execute in the virtual environment
+            
+        Returns:
+            Tuple of (stdout, stderr) from the command execution
+        """
+        venv_path = f"~/.venvs/{venv_name}"
+        
+        # Check if virtual environment exists
+        check_cmd = f"test -d {venv_path}"
+        stdout, stderr = await self.interface.run_command(check_cmd)
+        
+        if stderr or "test:" in stdout:  # venv doesn't exist
+            return "", f"Virtual environment '{venv_name}' does not exist. Create it first using venv_install."
+        
+        # Activate virtual environment and run command
+        full_command = f". {venv_path}/bin/activate && {command}"
+        return await self.interface.run_command(full_command)
+    
+    async def venv_exec(self, venv_name: str, python_func, *args, **kwargs):
+        """Execute Python function in a virtual environment using source code extraction.
+        
+        Args:
+            venv_name: Name of the virtual environment
+            python_func: A callable function to execute
+            *args: Positional arguments to pass to the function
+            **kwargs: Keyword arguments to pass to the function
+            
+        Returns:
+            The result of the function execution, or raises any exception that occurred
+        """
+        import base64
+        import inspect
+        import json
+        import textwrap
+        
+        try:
+            # Get function source code using inspect.getsource
+            source = inspect.getsource(python_func)
+            # Remove common leading whitespace (dedent)
+            func_source = textwrap.dedent(source).strip()
+            
+            # Remove decorators
+            while func_source.lstrip().startswith("@"):
+                func_source = func_source.split("\n", 1)[1].strip()
+            
+            # Get function name for execution
+            func_name = python_func.__name__
+            
+            # Serialize args and kwargs as JSON (safer than dill for cross-version compatibility)
+            args_json = json.dumps(args, default=str)
+            kwargs_json = json.dumps(kwargs, default=str)
+            
+        except OSError as e:
+            raise Exception(f"Cannot retrieve source code for function {python_func.__name__}: {e}")
+        except Exception as e:
+            raise Exception(f"Failed to reconstruct function source: {e}")
+        
+        # Create Python code that will define and execute the function
+        python_code = f'''
+import json
+import traceback
+
+try:
+    # Define the function from source
+{textwrap.indent(func_source, "    ")}
+    
+    # Deserialize args and kwargs from JSON
+    args_json = """{args_json}"""
+    kwargs_json = """{kwargs_json}"""
+    args = json.loads(args_json)
+    kwargs = json.loads(kwargs_json)
+    
+    # Execute the function
+    result = {func_name}(*args, **kwargs)
+
+    # Create success output payload
+    output_payload = {{
+        "success": True,
+        "result": result,
+        "error": None
+    }}
+    
+except Exception as e:
+    # Create error output payload
+    output_payload = {{
+        "success": False,
+        "result": None,
+        "error": {{
+            "type": type(e).__name__,
+            "message": str(e),
+            "traceback": traceback.format_exc()
+        }}
+    }}
+
+# Serialize the output payload as JSON
+import json
+output_json = json.dumps(output_payload, default=str)
+
+# Print the JSON output with markers
+print(f"<<<VENV_EXEC_START>>>{{output_json}}<<<VENV_EXEC_END>>>")
+'''
+        
+        # Encode the Python code in base64 to avoid shell escaping issues
+        encoded_code = base64.b64encode(python_code.encode('utf-8')).decode('ascii')
+        
+        # Execute the Python code in the virtual environment
+        python_command = f"python -c \"import base64; exec(base64.b64decode('{encoded_code}').decode('utf-8'))\""
+        stdout, stderr = await self.venv_cmd(venv_name, python_command)
+        
+        # Parse the output to extract the payload
+        start_marker = "<<<VENV_EXEC_START>>>"
+        end_marker = "<<<VENV_EXEC_END>>>"
+
+        # Print original stdout
+        print(stdout[:stdout.find(start_marker)])
+        
+        if start_marker in stdout and end_marker in stdout:
+            start_idx = stdout.find(start_marker) + len(start_marker)
+            end_idx = stdout.find(end_marker)
+            
+            if start_idx < end_idx:
+                output_json = stdout[start_idx:end_idx]
+
+                try:
+                    # Decode and deserialize the output payload from JSON
+                    output_payload = json.loads(output_json)
+                except Exception as e:
+                    raise Exception(f"Failed to decode output payload: {e}")
+                
+                if output_payload["success"]:
+                    return output_payload["result"]
+                else:
+                    # Recreate and raise the original exception
+                    error_info = output_payload["error"]
+                    error_class = eval(error_info["type"])
+                    raise error_class(error_info["message"])
+            else:
+                raise Exception("Invalid output format: markers found but no content between them")
+        else:
+            # Fallback: return stdout/stderr if no payload markers found
+            raise Exception(f"No output payload found. stdout: {stdout}, stderr: {stderr}")

@@ -146,14 +146,19 @@ echo "🐍 Setting up Python environment..."
 PYTHON_CMD=""
 for cmd in python3.11 python3 python; do
   if command -v $cmd &> /dev/null; then
-    # Check if this Python version is 3.11+
+    # Check this Python version
     PYTHON_VERSION=$($cmd --version 2>&1 | cut -d" " -f2)
     PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
     PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
     
-    if [ "$PYTHON_MAJOR" -gt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 11 ]); then
+    if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -eq 11 ]; then
       PYTHON_CMD=$cmd
       echo "✅ Found suitable Python: $cmd (version $PYTHON_VERSION)"
+      break
+    elif [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -gt 11 ]; then
+      PYTHON_CMD=$cmd
+      PYTHON_TOO_NEW=true
+      echo "⚠️  Found $cmd (version $PYTHON_VERSION) but only Python 3.11.x is supported."
       break
     else
       echo "⚠️  Found $cmd (version $PYTHON_VERSION) but it's too old, trying next..."
@@ -161,11 +166,34 @@ for cmd in python3.11 python3 python; do
   fi
 done
 
-# If no suitable Python was found, error out
-if [ -z "$PYTHON_CMD" ]; then
-  echo "❌ Python 3.11+ is required but not found."
-  echo "Please install Python 3.11+ and try again."
-  exit 1
+# If no suitable Python was found, or if Python is too new, offer to exit or continue
+if [ -z "$PYTHON_CMD" ] || [ "$PYTHON_TOO_NEW" = true ]; then
+  OS_TYPE=$(uname -s)
+  if [ "$PYTHON_TOO_NEW" = true ]; then
+    echo -e "\n❌ Python version $PYTHON_VERSION detected. Only Python 3.11.x is supported. Newer versions (e.g., 3.12+) are not yet supported."
+  else
+    if [[ "$OS_TYPE" == "Darwin" ]]; then
+      echo -e "\n❌ python3.11 not found. To continue, we recommend running this:\n\n    $ brew install python@3.11\n"
+    elif [[ "$OS_TYPE" == "MINGW"* || "$OS_TYPE" == "CYGWIN"* || "$OS_TYPE" == "MSYS"* ]]; then
+      echo -e "\n❌ python3.11 not found. Please install Python 3.11 from https://www.python.org/downloads/\n"
+    else
+      echo -e "\n❌ python3.11 not found. Please install Python 3.11 from your package manager or https://www.python.org/downloads/\n"
+    fi
+  fi
+  while true; do
+    echo "Would you like to exit so you can install Python 3.11, or continue anyway? (e = exit, c = continue): "
+    read -n 1 -r PYTHON_CONT_CHOICE
+    echo
+    if [[ "$PYTHON_CONT_CHOICE" =~ ^[Ee]$ ]]; then
+      echo "Exiting so you can install Python 3.11."
+      exit 1
+    elif [[ "$PYTHON_CONT_CHOICE" =~ ^[Cc]$ ]]; then
+      echo "⚠️  Continuing without Python 3.11. Some features may not work as expected."
+      break
+    else
+      echo "Please enter 'e' to exit or 'c' to continue."
+    fi
+  done
 fi
 
 # Create a virtual environment
@@ -181,8 +209,12 @@ echo "📦 Updating C/ua packages..."
 pip install -U pip setuptools wheel Cmake
 pip install -U cua-computer "cua-agent[all]"
 
-# Temporary fix for mlx-vlm, see https://github.com/Blaizzy/mlx-vlm/pull/349
-pip install git+https://github.com/ddupont808/mlx-vlm.git@stable/fix/qwen2-position-id
+# Install mlx-vlm on Apple Silicon Macs
+if [[ $(uname -m) == 'arm64' ]]; then
+  echo "Installing mlx-vlm for Apple Silicon Macs..."
+  pip install git+https://github.com/Blaizzy/mlx-vlm.git
+  # pip install git+https://github.com/ddupont808/mlx-vlm.git@stable/fix/qwen2-position-id
+fi
 
 # Create a simple demo script
 mkdir -p "$DEMO_DIR"
