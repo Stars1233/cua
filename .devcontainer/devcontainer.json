@@ -1,0 +1,49 @@
+{
+	"name": "C/ua - OSS",
+	"build": {
+		"dockerfile": "../Dockerfile"
+	},
+	"containerEnv": {
+		"DISPLAY": "",
+		"PYTHONPATH": "/app/libs/core:/app/libs/computer:/app/libs/agent:/app/libs/som:/app/libs/pylume:/app/libs/computer-server:/app/libs/mcp-server",
+		"PYLUME_HOST": "host.docker.internal"
+	},
+	"forwardPorts": [7860],
+	"portsAttributes": {
+		"7860": {
+			"label": "C/ua web client (Gradio)",
+			"onAutoForward": "silent"
+		}
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python",
+				"ms-python.black-formatter",
+				"charliermarsh.ruff",
+				"ms-python.vscode-pylance"
+			],
+			"settings": {
+				"python.defaultInterpreterPath": "/usr/local/bin/python",
+				"python.terminal.activateEnvironment": false,
+				"[python]": {
+					"editor.formatOnSave": true,
+					"editor.defaultFormatter": "ms-python.black-formatter",
+					"editor.codeActionsOnSave": {
+						"source.organizeImports": "explicit"
+					}
+				},
+				"python.linting.enabled": true,
+				"python.linting.ruffEnabled": true,
+				"python.formatting.provider": "black",
+				"files.watcherExclude": {
+					"**/.venv/**": true,
+					"**/node_modules/**": true,
+					"**/__pycache__/**": true,
+					"**/.pytest_cache/**": true
+				}
+			}
+		}
+	},
+	"postCreateCommand": "/bin/bash .devcontainer/post-install.sh"
+}

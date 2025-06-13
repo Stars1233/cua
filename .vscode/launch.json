@@ -1,6 +1,32 @@
 {
     "configurations": [
         {
+            "name": "Agent UI",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "examples/agent_ui_examples.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "python": "${workspaceFolder:cua-root}/.venv/bin/python",
+            "cwd": "${workspaceFolder:cua-root}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+            }
+        },
+        {
+            "name": "Computer UI",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "examples/computer_ui_examples.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "python": "${workspaceFolder:cua-root}/.venv/bin/python",
+            "cwd": "${workspaceFolder:cua-root}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+            }
+        },
+        {
             "name": "Run Computer Examples",
             "type": "debugpy",
             "request": "launch",
@@ -18,19 +44,6 @@
             "type": "debugpy",
             "request": "launch",
             "program": "examples/agent_examples.py",
-            "console": "integratedTerminal",
-            "justMyCode": false,
-            "python": "${workspaceFolder:cua-root}/.venv/bin/python",
-            "cwd": "${workspaceFolder:cua-root}",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
-            }
-        },
-        {
-            "name": "Run Agent UI Examples",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "examples/agent_ui_examples.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",

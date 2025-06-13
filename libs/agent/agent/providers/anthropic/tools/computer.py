@@ -478,17 +478,11 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
                 if direction == "down":
                     # Scroll down (Page Down on macOS)
                     self.logger.info(f"Scrolling down, amount: {amount}")
-                    # Use fn+down for page down on macOS
-                    for _ in range(amount):
-                        await self.computer.interface.hotkey("fn", "down")
-                        await asyncio.sleep(0.1)
+                    await self.computer.interface.scroll_down(amount)
                 else:
                     # Scroll up (Page Up on macOS)
                     self.logger.info(f"Scrolling up, amount: {amount}")
-                    # Use fn+up for page up on macOS
-                    for _ in range(amount):
-                        await self.computer.interface.hotkey("fn", "up")
-                        await asyncio.sleep(0.1)
+                    await self.computer.interface.scroll_up(amount)
 
                 # Wait briefly for UI changes
                 await asyncio.sleep(0.5)

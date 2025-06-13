@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, Tuple, List
 from ..logger import Logger, LogLevel
+from .models import MouseButton
 
 
 class BaseComputerInterface(ABC):
@@ -52,6 +53,16 @@ class BaseComputerInterface(ABC):
 
     # Mouse Actions
     @abstractmethod
+    async def mouse_down(self, x: Optional[int] = None, y: Optional[int] = None, button: "MouseButton" = "left") -> None:
+        """Press and hold a mouse button."""
+        pass
+    
+    @abstractmethod
+    async def mouse_up(self, x: Optional[int] = None, y: Optional[int] = None, button: "MouseButton" = "left") -> None:
+        """Release a mouse button."""
+        pass
+    
+    @abstractmethod
     async def left_click(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
         """Perform a left click."""
         pass
@@ -96,6 +107,16 @@ class BaseComputerInterface(ABC):
 
     # Keyboard Actions
     @abstractmethod
+    async def key_down(self, key: str) -> None:
+        """Press and hold a key."""
+        pass
+    
+    @abstractmethod
+    async def key_up(self, key: str) -> None:
+        """Release a key."""
+        pass
+    
+    @abstractmethod
     async def type_text(self, text: str) -> None:
         """Type the specified text."""
         pass
@@ -111,6 +132,11 @@ class BaseComputerInterface(ABC):
         pass
 
     # Scrolling Actions
+    @abstractmethod
+    async def scroll(self, x: int, y: int) -> None:
+        """Scroll the mouse wheel."""
+        pass
+    
     @abstractmethod
     async def scroll_down(self, clicks: int = 1) -> None:
         """Scroll down."""
@@ -166,7 +192,47 @@ class BaseComputerInterface(ABC):
     async def directory_exists(self, path: str) -> bool:
         """Check if directory exists."""
         pass
-
+    
+    @abstractmethod
+    async def list_dir(self, path: str) -> List[str]:
+        """List directory contents."""
+        pass
+    
+    @abstractmethod
+    async def read_text(self, path: str) -> str:
+        """Read file text contents."""
+        pass
+    
+    @abstractmethod
+    async def write_text(self, path: str, content: str) -> None:
+        """Write file text contents."""
+        pass
+    
+    @abstractmethod
+    async def read_bytes(self, path: str) -> bytes:
+        """Read file binary contents."""
+        pass
+    
+    @abstractmethod
+    async def write_bytes(self, path: str, content: bytes) -> None:
+        """Write file binary contents."""
+        pass
+    
+    @abstractmethod
+    async def delete_file(self, path: str) -> None:
+        """Delete file."""
+        pass
+    
+    @abstractmethod
+    async def create_dir(self, path: str) -> None:
+        """Create directory."""
+        pass
+    
+    @abstractmethod
+    async def delete_dir(self, path: str) -> None:
+        """Delete directory."""
+        pass
+    
     @abstractmethod
     async def run_command(self, command: str) -> Tuple[str, str]:
         """Run shell command."""

@@ -31,7 +31,7 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
         # Create OS-specific handlers
-        self.accessibility_handler, self.automation_handler, self.diorama_handler = HandlerFactory.create_handlers()
+        self.accessibility_handler, self.automation_handler, self.diorama_handler, self.file_handler = HandlerFactory.create_handlers()
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
@@ -157,28 +157,50 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # Map commands to appropriate handler methods
     handlers = {
+        # App-Use commands
+        "diorama_cmd": manager.diorama_handler.diorama_cmd,
         # Accessibility commands
         "get_accessibility_tree": manager.accessibility_handler.get_accessibility_tree,
         "find_element": manager.accessibility_handler.find_element,
-        # Automation commands
-        "screenshot": manager.automation_handler.screenshot,
+        # Shell commands
+        "run_command": manager.automation_handler.run_command,
+        # File system commands
+        "file_exists": manager.file_handler.file_exists,
+        "directory_exists": manager.file_handler.directory_exists,
+        "list_dir": manager.file_handler.list_dir,
+        "read_text": manager.file_handler.read_text,
+        "write_text": manager.file_handler.write_text,
+        "read_bytes": manager.file_handler.read_bytes,
+        "write_bytes": manager.file_handler.write_bytes,
+        "delete_file": manager.file_handler.delete_file,
+        "create_dir": manager.file_handler.create_dir,
+        "delete_dir": manager.file_handler.delete_dir,
+        # Mouse commands
+        "mouse_down": manager.automation_handler.mouse_down,
+        "mouse_up": manager.automation_handler.mouse_up,
         "left_click": manager.automation_handler.left_click,
         "right_click": manager.automation_handler.right_click,
         "double_click": manager.automation_handler.double_click,
-        "scroll_down": manager.automation_handler.scroll_down,
-        "scroll_up": manager.automation_handler.scroll_up,
         "move_cursor": manager.automation_handler.move_cursor,
-        "type_text": manager.automation_handler.type_text,
-        "press_key": manager.automation_handler.press_key,
         "drag_to": manager.automation_handler.drag_to,
         "drag": manager.automation_handler.drag,
+        # Keyboard commands
+        "key_down": manager.automation_handler.key_down,
+        "key_up": manager.automation_handler.key_up,
+        "type_text": manager.automation_handler.type_text,
+        "press_key": manager.automation_handler.press_key,
         "hotkey": manager.automation_handler.hotkey,
+        # Scrolling actions
+        "scroll": manager.automation_handler.scroll,
+        "scroll_down": manager.automation_handler.scroll_down,
+        "scroll_up": manager.automation_handler.scroll_up,
+        # Screen actions
+        "screenshot": manager.automation_handler.screenshot,
         "get_cursor_position": manager.automation_handler.get_cursor_position,
         "get_screen_size": manager.automation_handler.get_screen_size,
+        # Clipboard actions
         "copy_to_clipboard": manager.automation_handler.copy_to_clipboard,
         "set_clipboard": manager.automation_handler.set_clipboard,
-        "run_command": manager.automation_handler.run_command,
-        "diorama_cmd": manager.diorama_handler.diorama_cmd,
     }
 
     try:

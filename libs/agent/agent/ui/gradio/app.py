@@ -41,7 +41,6 @@ from typing import cast
 # Import from agent package
 from agent.core.types import AgentResponse
 from agent.core.callbacks import DefaultCallbackHandler
-from agent.providers.omni.parser import ParseResult
 from computer import Computer
 
 from agent import ComputerAgent, AgentLoop, LLM, LLMProvider
@@ -103,7 +102,7 @@ class GradioChatScreenshotHandler(DefaultCallbackHandler):
         self,
         screenshot_base64: str,
         action_type: str = "",
-        parsed_screen: Optional[ParseResult] = None,
+        parsed_screen: Optional[dict] = None,
     ) -> None:
         """Add screenshot to chatbot when a screenshot is taken and update the annotated image.
 

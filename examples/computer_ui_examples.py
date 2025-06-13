@@ -18,7 +18,11 @@ from computer.ui.gradio.app import create_gradio_ui
 if __name__ == "__main__":
     print("Launching Computer Interface Gradio UI with advanced features...")
     app = create_gradio_ui()
-    app.launch(share=False)
+    app.launch(
+        share=False,
+        server_name="0.0.0.0",
+        server_port=7860,
+    )
     
     # Optional: Using the saved dataset
     # import datasets

@@ -1,7 +1,7 @@
 import platform
 import subprocess
 from typing import Tuple, Type
-from .base import BaseAccessibilityHandler, BaseAutomationHandler
+from .base import BaseAccessibilityHandler, BaseAutomationHandler, BaseFileHandler
 from computer_server.diorama.base import BaseDioramaHandler
 
 # Conditionally import platform-specific handlers
@@ -11,6 +11,8 @@ if system == 'darwin':
     from computer_server.diorama.macos import MacOSDioramaHandler
 elif system == 'linux':
     from .linux import LinuxAccessibilityHandler, LinuxAutomationHandler
+
+from .generic import GenericFileHandler
 
 class HandlerFactory:
     """Factory for creating OS-specific handlers."""
@@ -40,12 +42,12 @@ class HandlerFactory:
             raise RuntimeError(f"Failed to determine current OS: {str(e)}")
     
     @staticmethod
-    def create_handlers() -> Tuple[BaseAccessibilityHandler, BaseAutomationHandler, BaseDioramaHandler]:
+    def create_handlers() -> Tuple[BaseAccessibilityHandler, BaseAutomationHandler, BaseDioramaHandler, BaseFileHandler]:
         """Create and return appropriate handlers for the current OS.
         
         Returns:
-            Tuple[BaseAccessibilityHandler, BaseAutomationHandler, BaseDioramaHandler]: A tuple containing
-            the appropriate accessibility, automation, and diorama handlers for the current OS.
+            Tuple[BaseAccessibilityHandler, BaseAutomationHandler, BaseDioramaHandler, BaseFileHandler]: A tuple containing
+            the appropriate accessibility, automation, diorama, and file handlers for the current OS.
         
         Raises:
             NotImplementedError: If the current OS is not supported
@@ -54,8 +56,8 @@ class HandlerFactory:
         os_type = HandlerFactory._get_current_os()
         
         if os_type == 'darwin':
-            return MacOSAccessibilityHandler(), MacOSAutomationHandler(), MacOSDioramaHandler()
+            return MacOSAccessibilityHandler(), MacOSAutomationHandler(), MacOSDioramaHandler(), GenericFileHandler()
         elif os_type == 'linux':
-            return LinuxAccessibilityHandler(), LinuxAutomationHandler(), BaseDioramaHandler()
+            return LinuxAccessibilityHandler(), LinuxAutomationHandler(), BaseDioramaHandler(), GenericFileHandler()
         else:
             raise NotImplementedError(f"OS '{os_type}' is not supported") 

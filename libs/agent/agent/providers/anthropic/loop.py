@@ -283,8 +283,12 @@ class AnthropicLoop(BaseLoop):
                 # Create new turn directory for this API call
                 self._create_turn_dir()
 
+
+                # Apply image retention policy
+                self.message_manager.messages = messages.copy()
+                prepared_messages = self.message_manager.get_messages()
                 # Convert standard messages to Anthropic format using utility function
-                anthropic_messages, system_content = to_anthropic_format(messages.copy())
+                anthropic_messages, system_content = to_anthropic_format(prepared_messages)
 
                 # Use API handler to make API call with Anthropic format
                 response = await self.api_handler.make_api_call(
