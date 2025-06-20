@@ -84,6 +84,24 @@ class LinuxAutomationHandler(BaseAutomationHandler):
     """Linux implementation of automation handler using pyautogui."""
     
     # Mouse Actions
+    async def mouse_down(self, x: Optional[int] = None, y: Optional[int] = None, button: str = "left") -> Dict[str, Any]:
+        try:
+            if x is not None and y is not None:
+                pyautogui.moveTo(x, y)
+            pyautogui.mouseDown(button=button)
+            return {"success": True}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
+    async def mouse_up(self, x: Optional[int] = None, y: Optional[int] = None, button: str = "left") -> Dict[str, Any]:
+        try:
+            if x is not None and y is not None:
+                pyautogui.moveTo(x, y)
+            pyautogui.mouseUp(button=button)
+            return {"success": True}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
     async def move_cursor(self, x: int, y: int) -> Dict[str, Any]:
         try:
             pyautogui.moveTo(x, y)
@@ -154,6 +172,20 @@ class LinuxAutomationHandler(BaseAutomationHandler):
             return {"success": False, "error": str(e)}
 
     # Keyboard Actions
+    async def key_down(self, key: str) -> Dict[str, Any]:
+        try:
+            pyautogui.keyDown(key)
+            return {"success": True}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+        
+    async def key_up(self, key: str) -> Dict[str, Any]:
+        try:
+            pyautogui.keyUp(key)
+            return {"success": True}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
     async def type_text(self, text: str) -> Dict[str, Any]:
         try:
             pyautogui.write(text)
@@ -176,6 +208,13 @@ class LinuxAutomationHandler(BaseAutomationHandler):
             return {"success": False, "error": str(e)}
 
     # Scrolling Actions
+    async def scroll(self, x: int, y: int) -> Dict[str, Any]:
+        try:
+            pyautogui.scroll(x, y)
+            return {"success": True}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
     async def scroll_down(self, clicks: int = 1) -> Dict[str, Any]:
         try:
             pyautogui.scroll(-clicks)

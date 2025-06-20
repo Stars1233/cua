@@ -276,7 +276,7 @@ class OpenAILoop(BaseLoop):
                 # Call API
                 screen_size = await self.computer.interface.get_screen_size()
                 response = await self.api_handler.send_initial_request(
-                    messages=messages,
+                    messages=self.message_manager.get_messages(), # Apply image retention policy
                     display_width=str(screen_size["width"]),
                     display_height=str(screen_size["height"]),
                     previous_response_id=self.last_response_id,
@@ -397,7 +397,7 @@ class OpenAILoop(BaseLoop):
                         # The API handler will extract this from the message history
                         if isinstance(self.last_response_id, str):
                             response = await self.api_handler.send_computer_call_request(
-                                messages=self.message_manager.messages,
+                                messages=self.message_manager.get_messages(), # Apply image retention policy
                                 display_width=str(screen_size["width"]),
                                 display_height=str(screen_size["height"]),
                                 previous_response_id=self.last_response_id,  # Use instance variable

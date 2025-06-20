@@ -4,7 +4,7 @@ build-backend = "pdm.backend"
 
 [project]
 name = "cua-agent"
-version = "0.1.0"
+version = "0.2.0"
 description = "CUA (Computer Use) Agent for AI-driven computer interaction"
 readme = "README.md"
 authors = [
@@ -38,8 +38,7 @@ uitars = [
     "httpx>=0.27.0,<0.29.0",
 ]
 uitars-mlx = [
-    # The mlx-vlm package needs to be installed manually with:
-    # pip install git+https://github.com/ddupont808/mlx-vlm.git@stable/fix/qwen2-position-id
+    "mlx-vlm>=0.1.27; sys_platform == 'darwin'"
 ]
 ui = [
     "gradio>=5.23.3,<6.0.0",
@@ -88,9 +87,8 @@ all = [
     "requests>=2.31.0,<3.0.0",
     "ollama>=0.4.7,<0.5.0",
     "gradio>=5.23.3,<6.0.0",
-    "python-dotenv>=1.0.1,<2.0.0"
-    # mlx-vlm needs to be installed manually with:
-    # pip install git+https://github.com/ddupont808/mlx-vlm.git@stable/fix/qwen2-position-id
+    "python-dotenv>=1.0.1,<2.0.0",
+    "mlx-vlm>=0.1.27; sys_platform == 'darwin'"
 ]
 
 [tool.pdm]

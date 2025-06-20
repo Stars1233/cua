@@ -72,12 +72,23 @@ cp -f .build/release/lume "$TEMP_ROOT/usr/local/bin/"
 
 # Build the installer package
 log "essential" "Building installer package..."
-pkgbuild --root "$TEMP_ROOT" \
+if ! pkgbuild --root "$TEMP_ROOT" \
          --identifier "com.trycua.lume" \
          --version "1.0" \
          --install-location "/" \
          --sign "$CERT_INSTALLER_NAME" \
-         ./.release/lume.pkg 2> /dev/null
+         ./.release/lume.pkg; then
+    log "error" "Failed to build installer package"
+    exit 1
+fi
+
+# Verify the package was created
+if [ ! -f "./.release/lume.pkg" ]; then
+    log "error" "Package file ./.release/lume.pkg was not created"
+    exit 1
+fi
+
+log "essential" "Package created successfully"
 
 # Submit for notarization using stored credentials
 log "essential" "Submitting for notarization..."
@@ -89,24 +100,33 @@ if [ "$LOG_LEVEL" = "minimal" ] || [ "$LOG_LEVEL" = "none" ]; then
       --password "${APP_SPECIFIC_PASSWORD}" \
       --wait 2>&1)
   
-  # Just show success or failure
+  # Check if notarization was successful
   if echo "$NOTARY_OUTPUT" | grep -q "status: Accepted"; then
     log "essential" "Notarization successful!"
   else
     log "error" "Notarization failed. Please check logs."
+    log "error" "Notarization output:"
+    echo "$NOTARY_OUTPUT"
+    exit 1
   fi
 else
   # Normal verbose output
-  xcrun notarytool submit ./.release/lume.pkg \
+  if ! xcrun notarytool submit ./.release/lume.pkg \
       --apple-id "${APPLE_ID}" \
       --team-id "${TEAM_ID}" \
       --password "${APP_SPECIFIC_PASSWORD}" \
-      --wait
+      --wait; then
+    log "error" "Notarization failed"
+    exit 1
+  fi
 fi
 
 # Staple the notarization ticket
 log "essential" "Stapling notarization ticket..."
-xcrun stapler staple ./.release/lume.pkg > /dev/null 2>&1
+if ! xcrun stapler staple ./.release/lume.pkg > /dev/null 2>&1; then
+  log "error" "Failed to staple notarization ticket"
+  exit 1
+fi
 
 # Create temporary directory for package extraction
 EXTRACT_ROOT=$(mktemp -d)

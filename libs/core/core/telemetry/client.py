@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 from core import __version__
 from core.telemetry.sender import send_telemetry
 
-logger = logging.getLogger("cua.telemetry")
+logger = logging.getLogger("core.telemetry")
 
 # Controls how frequently telemetry will be sent (percentage)
 TELEMETRY_SAMPLE_RATE = 5  # 5% sampling rate

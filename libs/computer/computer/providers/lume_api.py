@@ -66,8 +66,6 @@ def lume_api_get(
     
     # Only print the curl command when debug is enabled
     display_curl_string = ' '.join(display_cmd)
-    if debug or verbose:
-        print(f"DEBUG: Executing curl API call: {display_curl_string}")
     logger.debug(f"Executing API request: {display_curl_string}")
     
     # Execute the command - for execution we need to use shell=True to handle URLs with special characters
@@ -172,8 +170,6 @@ def lume_api_run(
         payload["sharedDirectories"] = run_opts["shared_directories"]
         
     # Log the payload for debugging
-    if debug or verbose:
-        print(f"DEBUG: Payload for {vm_name} run request: {json.dumps(payload, indent=2)}")
     logger.debug(f"API payload: {json.dumps(payload, indent=2)}")
     
     # Construct the curl command
@@ -183,11 +179,6 @@ def lume_api_run(
         "-d", json.dumps(payload),
         api_url
     ]
-    
-    # Always print the command for debugging
-    if debug or verbose:
-        print(f"DEBUG: Executing curl run API call: {' '.join(cmd)}")
-        print(f"Run payload: {json.dumps(payload, indent=2)}")
     
     # Execute the command
     try:
@@ -405,8 +396,6 @@ def lume_api_pull(
         f"http://{host}:{port}/lume/pull"
     ])
     
-    if debug or verbose:
-        print(f"DEBUG: Executing curl API call: {' '.join(pull_cmd)}")
     logger.debug(f"Executing API request: {' '.join(pull_cmd)}")
     
     try:
@@ -474,8 +463,6 @@ def lume_api_delete(
     
     # Only print the curl command when debug is enabled
     display_curl_string = ' '.join(display_cmd)
-    if debug or verbose:
-        print(f"DEBUG: Executing curl API call: {display_curl_string}")
     logger.debug(f"Executing API request: {display_curl_string}")
     
     # Execute the command - for execution we need to use shell=True to handle URLs with special characters

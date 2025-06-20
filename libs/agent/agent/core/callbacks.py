@@ -6,8 +6,6 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Protocol
 
-from agent.providers.omni.parser import ParseResult
-
 logger = logging.getLogger(__name__)
 
 class ContentCallback(Protocol):
@@ -117,7 +115,7 @@ class CallbackManager:
         for handler in self.handlers:
             await handler.on_error(error, **kwargs)
             
-    async def on_screenshot(self, screenshot_base64: str, action_type: str = "", parsed_screen: Optional[ParseResult] = None) -> None:
+    async def on_screenshot(self, screenshot_base64: str, action_type: str = "", parsed_screen: Optional[dict] = None) -> None:
         """Called when a screenshot is taken.
         
         Args:
@@ -166,7 +164,7 @@ class CallbackHandler(ABC):
         pass
         
     @abstractmethod
-    async def on_screenshot(self, screenshot_base64: str, action_type: str = "", parsed_screen: Optional[ParseResult] = None) -> None:
+    async def on_screenshot(self, screenshot_base64: str, action_type: str = "", parsed_screen: Optional[dict] = None) -> None:
         """Called when a screenshot is taken.
         
         Args:

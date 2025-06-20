@@ -114,9 +114,25 @@ jobs:
           # Allow codesign to access the certificates (minimal output)
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain > /dev/null 2>&1
           
-          # Verify certificates were imported but only show count, not details
-          echo "Verifying signing identity (showing count only)..."
-          security find-identity -v -p codesigning | grep -c "valid identities found" || true
+          # Verify certificates were imported
+          echo "Verifying signing identities..."
+          CERT_COUNT=$(security find-identity -v -p codesigning build.keychain | grep -c "Developer ID Application" || echo "0")
+          INSTALLER_COUNT=$(security find-identity -v build.keychain | grep -c "Developer ID Installer" || echo "0")
+          
+          if [ "$CERT_COUNT" -eq 0 ]; then
+            echo "Error: No Developer ID Application certificate found"
+            security find-identity -v -p codesigning build.keychain
+            exit 1
+          fi
+          
+          if [ "$INSTALLER_COUNT" -eq 0 ]; then
+            echo "Error: No Developer ID Installer certificate found"  
+            security find-identity -v build.keychain
+            exit 1
+          fi
+          
+          echo "Found $CERT_COUNT Developer ID Application certificate(s) and $INSTALLER_COUNT Developer ID Installer certificate(s)"
+          echo "All required certificates verified successfully"
           
           # Clean up certificate files
           rm application.p12 installer.p12

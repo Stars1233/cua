@@ -41,7 +41,6 @@ from typing import cast
 # Import from agent package
 from agent.core.types import AgentResponse
 from agent.core.callbacks import DefaultCallbackHandler
-from agent.providers.omni.parser import ParseResult
 from computer import Computer
 
 from agent import ComputerAgent, AgentLoop, LLM, LLMProvider
@@ -103,7 +102,7 @@ class GradioChatScreenshotHandler(DefaultCallbackHandler):
         self,
         screenshot_base64: str,
         action_type: str = "",
-        parsed_screen: Optional[ParseResult] = None,
+        parsed_screen: Optional[dict] = None,
     ) -> None:
         """Add screenshot to chatbot when a screenshot is taken and update the annotated image.
 
@@ -133,11 +132,19 @@ class GradioChatScreenshotHandler(DefaultCallbackHandler):
 # Detect if current device is MacOS
 is_mac = platform.system().lower() == "darwin"
 
+# Detect if lume is available (host device is macOS)
+is_lume_available = is_mac or (os.environ.get("PYLUME_HOST", "localhost") != "localhost")
+
+print("PYLUME_HOST: ", os.environ.get("PYLUME_HOST", "localhost"))
+print("is_mac: ", is_mac)
+print("Lume available: ", is_lume_available)
+
 # Map model names to specific provider model names
 MODEL_MAPPINGS = {
     "openai": {
         # Default to operator CUA model
         "default": "computer-use-preview",
+        "OpenAI: Computer-Use Preview": "computer-use-preview",
         # Map standard OpenAI model names to CUA-specific model names
         "gpt-4-turbo": "computer-use-preview",
         "gpt-4o": "computer-use-preview",
@@ -148,9 +155,17 @@ MODEL_MAPPINGS = {
     "anthropic": {
         # Default to newest model
         "default": "claude-3-7-sonnet-20250219",
+        # New Claude 4 models
+        "Anthropic: Claude 4 Opus (20250514)": "claude-opus-4-20250514",
+        "Anthropic: Claude 4 Sonnet (20250514)": "claude-sonnet-4-20250514",
+        "claude-opus-4-20250514": "claude-opus-4-20250514",
+        "claude-sonnet-4-20250514": "claude-sonnet-4-20250514",
+
         # Specific Claude models for CUA
-        "claude-3-5-sonnet-20240620": "claude-3-5-sonnet-20240620",
+        "Anthropic: Claude 3.7 Sonnet (20250219)": "claude-3-5-sonnet-20240620",
+        "Anthropic: Claude 3.5 Sonnet (20240620)": "claude-3-7-sonnet-20250219",
         "claude-3-7-sonnet-20250219": "claude-3-7-sonnet-20250219",
+        "claude-3-5-sonnet-20240620": "claude-3-5-sonnet-20240620",
         # Map standard model names to CUA-specific model names
         "claude-3-opus": "claude-3-7-sonnet-20250219",
         "claude-3-sonnet": "claude-3-5-sonnet-20240620",
@@ -210,12 +225,12 @@ def get_provider_and_model(model_name: str, loop_provider: str) -> tuple:
     if agent_loop == AgentLoop.OPENAI:
         provider = LLMProvider.OPENAI
         model_name_to_use = MODEL_MAPPINGS["openai"].get(
-            model_name.lower(), MODEL_MAPPINGS["openai"]["default"]
+            model_name, MODEL_MAPPINGS["openai"]["default"]
         )
     elif agent_loop == AgentLoop.ANTHROPIC:
         provider = LLMProvider.ANTHROPIC
         model_name_to_use = MODEL_MAPPINGS["anthropic"].get(
-            model_name.lower(), MODEL_MAPPINGS["anthropic"]["default"]
+            model_name, MODEL_MAPPINGS["anthropic"]["default"]
         )
     elif agent_loop == AgentLoop.OMNI:
         # Determine provider and clean model name based on the full string from UI
@@ -235,33 +250,11 @@ def get_provider_and_model(model_name: str, loop_provider: str) -> tuple:
             cleaned_model_name = model_name.split("OMNI: Ollama ", 1)[1]
         elif model_name.startswith("OMNI: Claude "):
             provider = LLMProvider.ANTHROPIC
-            # Extract the canonical model name based on the UI string
-            # e.g., "OMNI: Claude 3.7 Sonnet (20250219)" -> "3.7 Sonnet" and "20250219"
-            parts = model_name.split(" (")
-            model_key_part = parts[0].replace("OMNI: Claude ", "")
-            date_part = parts[1].replace(")", "") if len(parts) > 1 else ""
 
-            # Normalize the extracted key part for comparison
-            # "3.7 Sonnet" -> "37sonnet"
-            model_key_part_norm = model_key_part.lower().replace(".", "").replace(" ", "")
-
-            cleaned_model_name = MODEL_MAPPINGS["omni"]["default"]  # Default if not found
-            # Find the canonical name in the main Anthropic map
-            for key_anthropic, val_anthropic in MODEL_MAPPINGS["anthropic"].items():
-                # Normalize the canonical key for comparison
-                # "claude-3-7-sonnet-20250219" -> "claude37sonnet20250219"
-                key_anthropic_norm = key_anthropic.lower().replace("-", "")
-
-                # Check if the normalized canonical key starts with "claude" + normalized extracted part
-                # AND contains the date part.
-                if (
-                    key_anthropic_norm.startswith("claude" + model_key_part_norm)
-                    and date_part in key_anthropic_norm
-                ):
-                    cleaned_model_name = (
-                        val_anthropic  # Use the canonical name like "claude-3-7-sonnet-20250219"
-                    )
-                    break
+            model_name = model_name.replace("OMNI: ", "Anthropic: ")
+            cleaned_model_name = MODEL_MAPPINGS["anthropic"].get(
+                model_name, MODEL_MAPPINGS["anthropic"]["default"]
+            )
         elif model_name.startswith("OMNI: OpenAI "):
             provider = LLMProvider.OPENAI
             # Extract the model part, e.g., "GPT-4o mini"
@@ -309,6 +302,8 @@ def get_provider_and_model(model_name: str, loop_provider: str) -> tuple:
         provider = LLMProvider.OPENAI
         model_name_to_use = MODEL_MAPPINGS["openai"]["default"]
         agent_loop = AgentLoop.OPENAI
+
+    print(f"Mapping {model_name} and {loop_provider} to {provider}, {model_name_to_use}, {agent_loop}")
 
     return provider, model_name_to_use, agent_loop
 
@@ -454,6 +449,9 @@ def create_gradio_ui(
     # Always show models regardless of API key availability
     openai_models = ["OpenAI: Computer-Use Preview"]
     anthropic_models = [
+        "Anthropic: Claude 4 Opus (20250514)",
+        "Anthropic: Claude 4 Sonnet (20250514)",
+
         "Anthropic: Claude 3.7 Sonnet (20250219)",
         "Anthropic: Claude 3.5 Sonnet (20240620)",
     ]
@@ -461,6 +459,8 @@ def create_gradio_ui(
         "OMNI: OpenAI GPT-4o",
         "OMNI: OpenAI GPT-4o mini",
         "OMNI: OpenAI GPT-4.5-preview",
+        "OMNI: Claude 4 Opus (20250514)",
+        "OMNI: Claude 4 Sonnet (20250514)",
         "OMNI: Claude 3.7 Sonnet (20250219)", 
         "OMNI: Claude 3.5 Sonnet (20240620)"
     ]
@@ -730,20 +730,25 @@ if __name__ == "__main__":
                 with gr.Accordion("Computer Configuration", open=True):
                     # Computer configuration options
                     computer_os = gr.Radio(
-                        choices=["macos", "linux"],
+                        choices=["macos", "linux", "windows"],
                         label="Operating System",
                         value="macos",
                         info="Select the operating system for the computer",
                     )
                     
-                    # Detect if current device is MacOS
+                    is_windows = platform.system().lower() == "windows"
                     is_mac = platform.system().lower() == "darwin"
                     
+                    providers = ["cloud"]
+                    if is_lume_available:
+                        providers += ["lume"]
+                    if is_windows:
+                        providers += ["winsandbox"]
+
                     computer_provider = gr.Radio(
-                        choices=["cloud", "lume"],
+                        choices=providers,
                         label="Provider",
                         value="lume" if is_mac else "cloud",
-                        visible=is_mac,
                         info="Select the computer provider",
                     )
                     

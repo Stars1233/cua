@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Any
 import aiohttp
 import re
 from .base import BaseUITarsClient
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +145,7 @@ class OAICompatClient(BaseUITarsClient):
                 else:
                     message = {"role": "user", "content": [{"type": "text", "text": item}]}
                 final_messages.append(message)
-
+                
         payload = {
             "model": self.model, 
             "messages": final_messages, 
@@ -192,7 +193,8 @@ class OAICompatClient(BaseUITarsClient):
                     
                     # if 503, then the endpoint is still warming up
                     if response.status == 503:
-                        logger.error(f"Endpoint is still warming up, please try again later")
+                        logger.error(f"Endpoint is still warming up, trying again in 30 seconds...")
+                        await asyncio.sleep(30)
                         raise Exception(f"Endpoint is still warming up: {response_text}")
                     
                     # Try to parse as JSON if the content type is appropriate

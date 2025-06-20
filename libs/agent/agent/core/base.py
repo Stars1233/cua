@@ -5,7 +5,6 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
-from agent.providers.omni.parser import ParseResult
 from computer import Computer
 from .messages import StandardMessageManager, ImageRetentionConfig
 from .types import AgentResponse
@@ -207,7 +206,7 @@ class BaseLoop(ABC):
     # EVENT HOOKS / CALLBACKS
     ###########################################
     
-    async def handle_screenshot(self, screenshot_base64: str, action_type: str = "", parsed_screen: Optional[ParseResult] = None) -> None:
+    async def handle_screenshot(self, screenshot_base64: str, action_type: str = "", parsed_screen: Optional[dict] = None) -> None:
         """Process a screenshot through callback managers
         
         Args:

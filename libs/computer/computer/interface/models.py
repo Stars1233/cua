@@ -106,6 +106,9 @@ class Key(Enum):
 # Combined key type
 KeyType = Union[Key, NavigationKey, SpecialKey, ModifierKey, FunctionKey, str]
 
+# Key type for mouse actions
+MouseButton = Literal['left', 'right', 'middle']
+
 class AccessibilityWindow(TypedDict):
     """Information about a window in the accessibility tree."""
     app_name: str

@@ -52,11 +52,11 @@ class CloudProvider(BaseVMProvider):
         return []
 
     async def run_vm(self, image: str, name: str, run_opts: Dict[str, Any], storage: Optional[str] = None) -> Dict[str, Any]:
-        logger.warning("CloudProvider.run_vm is not implemented")
-        return {"name": name, "status": "unavailable", "message": "CloudProvider is not implemented"}
+        # logger.warning("CloudProvider.run_vm is not implemented")
+        return {"name": name, "status": "unavailable", "message": "CloudProvider.run_vm is not implemented"}
 
     async def stop_vm(self, name: str, storage: Optional[str] = None) -> Dict[str, Any]:
-        logger.warning("CloudProvider.stop_vm is not implemented")
+        logger.warning("CloudProvider.stop_vm is not implemented. To clean up resources, please use Computer.disconnect()")
         return {"name": name, "status": "stopped", "message": "CloudProvider is not implemented"}
 
     async def update_vm(self, name: str, update_opts: Dict[str, Any], storage: Optional[str] = None) -> Dict[str, Any]:

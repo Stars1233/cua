@@ -6,7 +6,7 @@ import logging
 __version__ = "0.1.0"
 
 # Initialize logging
-logger = logging.getLogger("cua.agent")
+logger = logging.getLogger("agent")
 
 # Initialize telemetry when the package is imported
 try:

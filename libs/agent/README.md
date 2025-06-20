@@ -34,10 +34,7 @@ pip install "cua-agent[anthropic]" # Anthropic Cua Loop
 pip install "cua-agent[uitars]"    # UI-Tars support
 pip install "cua-agent[omni]" # Cua Loop based on OmniParser (includes Ollama for local models)
 pip install "cua-agent[ui]" # Gradio UI for the agent
-
-# For local UI-TARS with MLX support, you need to manually install mlx-vlm:
-pip install "cua-agent[uitars-mlx]"
-pip install git+https://github.com/ddupont808/mlx-vlm.git@stable/fix/qwen2-position-id # PR: https://github.com/Blaizzy/mlx-vlm/pull/349
+pip install "cua-agent[uitars-mlx]" # MLX UI-Tars support
 ```
 
 ## Run

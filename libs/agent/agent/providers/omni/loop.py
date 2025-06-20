@@ -26,9 +26,7 @@ from .api_handler import OmniAPIHandler
 from .tools.manager import ToolManager
 from .tools import ToolResult
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 def extract_data(input_string: str, data_type: str) -> str:
     """Extract content from code blocks."""

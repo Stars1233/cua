@@ -5,7 +5,6 @@ import json
 from typing import Any, Dict, List, Optional, Union, Tuple
 from dataclasses import dataclass
 import re
-from ..providers.omni.parser import ParseResult
 
 logger = logging.getLogger(__name__)
 
@@ -21,106 +20,6 @@ class ImageRetentionConfig:
     def should_retain_images(self) -> bool:
         """Check if image retention is enabled."""
         return self.num_images_to_keep is not None and self.num_images_to_keep > 0
-
-
-class BaseMessageManager:
-    """Base class for message preparation and management."""
-
-    def __init__(self, image_retention_config: Optional[ImageRetentionConfig] = None):
-        """Initialize the message manager.
-
-        Args:
-            image_retention_config: Configuration for image retention
-        """
-        self.image_retention_config = image_retention_config or ImageRetentionConfig()
-        if self.image_retention_config.min_removal_threshold < 1:
-            raise ValueError("min_removal_threshold must be at least 1")
-
-        # Track provider for message formatting
-        self.provider = "openai"  # Default provider
-
-    def set_provider(self, provider: str) -> None:
-        """Set the current provider to format messages for.
-
-        Args:
-            provider: Provider name (e.g., 'openai', 'anthropic')
-        """
-        self.provider = provider.lower()
-
-    def prepare_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Prepare messages by applying image retention and caching as configured.
-
-        Args:
-            messages: List of messages to prepare
-
-        Returns:
-            Prepared messages
-        """
-        if self.image_retention_config.should_retain_images():
-            self._filter_images(messages)
-        if self.image_retention_config.enable_caching:
-            self._inject_caching(messages)
-        return messages
-
-    def _filter_images(self, messages: List[Dict[str, Any]]) -> None:
-        """Filter messages to retain only the specified number of most recent images.
-
-        Args:
-            messages: Messages to filter
-        """
-        # Find all tool result blocks that contain images
-        tool_results = [
-            item
-            for message in messages
-            for item in (message["content"] if isinstance(message["content"], list) else [])
-            if isinstance(item, dict) and item.get("type") == "tool_result"
-        ]
-
-        # Count total images
-        total_images = sum(
-            1
-            for result in tool_results
-            for content in result.get("content", [])
-            if isinstance(content, dict) and content.get("type") == "image"
-        )
-
-        # Calculate how many images to remove
-        images_to_remove = total_images - (self.image_retention_config.num_images_to_keep or 0)
-        images_to_remove -= images_to_remove % self.image_retention_config.min_removal_threshold
-
-        # Remove oldest images first
-        for result in tool_results:
-            if isinstance(result.get("content"), list):
-                new_content = []
-                for content in result["content"]:
-                    if isinstance(content, dict) and content.get("type") == "image":
-                        if images_to_remove > 0:
-                            images_to_remove -= 1
-                            continue
-                    new_content.append(content)
-                result["content"] = new_content
-
-    def _inject_caching(self, messages: List[Dict[str, Any]]) -> None:
-        """Inject caching control for recent message turns.
-
-        Args:
-            messages: Messages to inject caching into
-        """
-        # Only apply cache_control for Anthropic API, not OpenAI
-        if self.provider != "anthropic":
-            return
-
-        # Default to caching last 3 turns
-        turns_to_cache = 3
-        for message in reversed(messages):
-            if message["role"] == "user" and isinstance(content := message["content"], list):
-                if turns_to_cache:
-                    turns_to_cache -= 1
-                    content[-1]["cache_control"] = {"type": "ephemeral"}
-                else:
-                    content[-1].pop("cache_control", None)
-                    break
-
 
 class StandardMessageManager:
     """Manages messages in a standardized OpenAI format across different providers."""
@@ -160,6 +59,7 @@ class StandardMessageManager:
 
     def get_messages(self) -> List[Dict[str, Any]]:
         """Get all messages in standard format.
+        This method applies image retention policy if configured.
 
         Returns:
             List of messages
@@ -181,16 +81,27 @@ class StandardMessageManager:
         if not self.config.num_images_to_keep:
             return messages
 
-        # Find user messages with images
+        # Find messages with images (both user messages and tool call outputs)
         image_messages = []
         for msg in messages:
+            has_image = False
+            
+            # Check user messages with images
             if msg["role"] == "user" and isinstance(msg["content"], list):
                 has_image = any(
                     item.get("type") == "image_url" or item.get("type") == "image"
                     for item in msg["content"]
                 )
-                if has_image:
-                    image_messages.append(msg)
+            
+            # Check assistant messages with tool calls that have images
+            elif msg["role"] == "assistant" and isinstance(msg["content"], list):
+                for item in msg["content"]:
+                    if item.get("type") == "tool_result" and "base64_image" in item:
+                        has_image = True
+                        break
+            
+            if has_image:
+                image_messages.append(msg)
 
         # If we don't have more images than the limit, return all messages
         if len(image_messages) <= self.config.num_images_to_keep:
@@ -200,13 +111,35 @@ class StandardMessageManager:
         images_to_keep = image_messages[-self.config.num_images_to_keep :]
         images_to_remove = image_messages[: -self.config.num_images_to_keep]
 
-        # Create a new message list without the older images
+        # Create a new message list, removing images from older messages
         result = []
         for msg in messages:
             if msg in images_to_remove:
-                # Skip this message
-                continue
-            result.append(msg)
+                # Remove images from this message but keep the text content
+                if msg["role"] == "user" and isinstance(msg["content"], list):
+                    # Keep only text content, remove images
+                    new_content = [
+                        item for item in msg["content"] 
+                        if item.get("type") not in ["image_url", "image"]
+                    ]
+                    if new_content:  # Only add if there's still content
+                        result.append({"role": msg["role"], "content": new_content})
+                elif msg["role"] == "assistant" and isinstance(msg["content"], list):
+                    # Remove base64_image from tool_result items
+                    new_content = []
+                    for item in msg["content"]:
+                        if item.get("type") == "tool_result" and "base64_image" in item:
+                            # Create a copy without the base64_image
+                            new_item = {k: v for k, v in item.items() if k != "base64_image"}
+                            new_content.append(new_item)
+                        else:
+                            new_content.append(item)
+                    result.append({"role": msg["role"], "content": new_content})
+                else:
+                    # For other message types, keep as is
+                    result.append(msg)
+            else:
+                result.append(msg)
 
         return result
 

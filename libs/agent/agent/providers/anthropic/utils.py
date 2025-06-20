@@ -4,7 +4,6 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Tuple, cast
 from anthropic.types.beta import BetaMessage
-from ..omni.parser import ParseResult
 from ...core.types import AgentResponse
 from datetime import datetime
 
@@ -188,7 +187,7 @@ def from_anthropic_format(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]
 async def to_agent_response_format(
     response: BetaMessage,
     messages: List[Dict[str, Any]],
-    parsed_screen: Optional[ParseResult] = None,
+    parsed_screen: Optional[dict] = None,
     parser: Optional[Any] = None,
     model: Optional[str] = None,
 ) -> AgentResponse:
