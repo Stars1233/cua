@@ -53,64 +53,66 @@
 
 
 
-### Option 1: Fully-managed install (recommended)
-*I want to be totally guided in the process*
+### Option 1: Fully-managed install with Docker (recommended)
+*Docker-based guided install for quick use*
 
 **macOS/Linux/Windows (via WSL):**
 ```bash
-# Requires Python 3.11+
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground.sh)"
+# Requires Docker
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/scripts/playground-docker.sh)"
 ```
-
-This script will:
-- Ask if you want to use local VMs or C/ua Cloud Containers
-- Install necessary dependencies (Lume CLI for local VMs)
-- Download VM images if needed
-- Install Python packages
-- Launch the Computer-Use Agent UI
-
-### Option 2: Key manual steps
-<details>
-<summary>If you are skeptical running one-install scripts</summary>
-
-**For C/ua Agent UI (any system, cloud VMs only):**
-```bash
-# Requires Python 3.11+ and C/ua API key
-pip install -U "cua-computer[all]" "cua-agent[all]"
-python -m agent.ui.gradio.app
-```
-
-**For Local macOS/Linux VMs (Apple Silicon only):**
-```bash
-# 1. Install Lume CLI
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
-
-# 2. Pull macOS image
-lume pull macos-sequoia-cua:latest
-
-# 3. Start VM
-lume run macos-sequoia-cua:latest
-
-# 4. Install packages and launch UI
-pip install -U "cua-computer[all]" "cua-agent[all]"
-python -m agent.ui.gradio.app
-```
-</details>
+This script will guide you through setup using Docker containers and launch the Computer-Use Agent UI.
 
 ---
 
-*How it works: Computer module provides secure desktops (Lume CLI locally, [C/ua Cloud Containers](https://trycua.com) remotely), Agent module provides local/API agents with OpenAI AgentResponse format and [trajectory tracing](https://trycua.com/trajectory-viewer).*
-### Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
+### Option 2: [Dev Container](./.devcontainer/README.md)
+*Best for contributors and development*
+
+This repository includes a [Dev Container](./.devcontainer/README.md) configuration that simplifies setup to a few steps:
+
+1. **Install the Dev Containers extension ([VS Code](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) or [WindSurf](https://docs.windsurf.com/windsurf/advanced#dev-containers-beta))**
+2. **Open the repository in the Dev Container:**
+    - Press `Ctrl+Shift+P` (or `⌘+Shift+P` on macOS)
+    - Select `Dev Containers: Clone Repository in Container Volume...` and paste the repository URL: `https://github.com/trycua/cua.git` (if not cloned) or `Dev Containers: Open Folder in Container...` (if git cloned).
+     > **Note**: On WindSurf, the post install hook might not run automatically. If so, run `/bin/bash .devcontainer/post-install.sh` manually.
+3. **Open the VS Code workspace:** Once the post-install.sh is done running, open the `.vscode/py.code-workspace` workspace and press ![Open Workspace](https://github.com/user-attachments/assets/923bdd43-8c8f-4060-8d78-75bfa302b48c)
+.
+4. **Run the Agent UI example:** Click ![Run Agent UI](https://github.com/user-attachments/assets/7a61ef34-4b22-4dab-9864-f86bf83e290b)
+ to start the Gradio UI. If prompted to install **debugpy (Python Debugger)** to enable remote debugging, select 'Yes' to proceed.
+5. **Access the Gradio UI:** The Gradio UI will be available at `http://localhost:7860` and will automatically forward to your host machine.
+
+---
+
+### Option 3: PyPI
+*Direct Python package installation*
+
+```bash
+# conda create -yn cua python==3.12
+
+pip install -U "cua-computer[all]" "cua-agent[all]"
+python -m agent.ui # Start the agent UI
+```
+
+Or check out the [Usage Guide](#-usage-guide) to learn how to use our Python SDK in your own code.
+
+---
+
+## Supported [Agent Loops](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops)
 - [UITARS-1.5](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Run locally on Apple Silicon with MLX, or use cloud providers
 - [OpenAI CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use OpenAI's Computer-Use Preview model
 - [Anthropic CUA](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Use Anthropic's Computer-Use capabilities
 - [OmniParser-v2.0](https://github.com/trycua/cua/blob/main/libs/agent/README.md#agent-loops) - Control UI with [Set-of-Marks prompting](https://som-gpt4v.github.io/) using any vision model
 
+## 🖥️ Compatibility
 
+For detailed compatibility information including host OS support, VM emulation capabilities, and model provider compatibility, see the [Compatibility Matrix](./COMPATIBILITY.md).
 
-# 💻 Developer Guide
+<br/>
+<br/>
 
-Follow these steps to use C/ua in your own code. See [Developer Guide](./docs/Developer-Guide.md) for building from source.
+# 🐍 Usage Guide
+
+Follow these steps to use C/ua in your own Python code. See [Developer Guide](./docs/Developer-Guide.md) for building from source.
 
 ### Step 1: Install Lume CLI
 
@@ -163,9 +165,11 @@ async def main():
       loop="uitars",
       model=LLM(provider="mlxvlm", name="mlx-community/UI-TARS-1.5-7B-6bit")
     )
-    await agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide")
+    async for result in agent.run("Find the trycua/cua repository on GitHub and follow the quick start guide"):
+        print(result)
 
-main()
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 For ready-to-use examples, check out our [Notebooks](./notebooks/) collection.
@@ -236,7 +240,6 @@ docker run -it --rm \
 | [**Agent**](./libs/agent/README.md) | AI agent framework for automating tasks | `pip install "cua-agent[all]"` |
 | [**MCP Server**](./libs/mcp-server/README.md) | MCP server for using CUA with Claude Desktop | `pip install cua-mcp-server` |
 | [**SOM**](./libs/som/README.md) | Self-of-Mark library for Agent | `pip install cua-som` |
-| [**PyLume**](./libs/pylume/README.md) | Python bindings for Lume | `pip install pylume` |
 | [**Computer Server**](./libs/computer-server/README.md) | Server component for Computer | `pip install cua-computer-server` |
 | [**Core**](./libs/core/README.md) | Core utilities | `pip install cua-core` |
 
@@ -245,6 +248,10 @@ docker run -it --rm \
 For complete examples, see [computer_examples.py](./examples/computer_examples.py) or [computer_nb.ipynb](./notebooks/computer_nb.ipynb)
 
 ```python
+# Shell Actions
+result = await computer.interface.run_command(cmd)       # Run shell command
+# result.stdout, result.stderr, result.returncode
+
 # Mouse Actions
 await computer.interface.left_click(x, y)       # Left click at coordinates
 await computer.interface.right_click(x, y)      # Right click at coordinates
@@ -252,11 +259,20 @@ await computer.interface.double_click(x, y)     # Double click at coordinates
 await computer.interface.move_cursor(x, y)      # Move cursor to coordinates
 await computer.interface.drag_to(x, y, duration)  # Drag to coordinates
 await computer.interface.get_cursor_position()  # Get current cursor position
+await computer.interface.mouse_down(x, y, button="left")  # Press and hold a mouse button
+await computer.interface.mouse_up(x, y, button="left")    # Release a mouse button
 
 # Keyboard Actions
 await computer.interface.type_text("Hello")     # Type text
 await computer.interface.press_key("enter")     # Press a single key
 await computer.interface.hotkey("command", "c") # Press key combination
+await computer.interface.key_down("command")    # Press and hold a key
+await computer.interface.key_up("command")      # Release a key
+
+# Scrolling Actions
+await computer.interface.scroll(x, y)           # Scroll the mouse wheel
+await computer.interface.scroll_down(clicks)    # Scroll down
+await computer.interface.scroll_up(clicks)      # Scroll up
 
 # Screen Actions
 await computer.interface.screenshot()           # Take a screenshot
@@ -269,10 +285,40 @@ await computer.interface.copy_to_clipboard()    # Get clipboard content
 # File System Operations
 await computer.interface.file_exists(path)      # Check if file exists
 await computer.interface.directory_exists(path) # Check if directory exists
-await computer.interface.run_command(cmd)       # Run shell command
+await computer.interface.read_text(path)        # Read file content
+await computer.interface.write_text(path, content) # Write file content
+await computer.interface.read_bytes(path)       # Read file content as bytes
+await computer.interface.write_bytes(path, content) # Write file content as bytes
+await computer.interface.delete_file(path)      # Delete file
+await computer.interface.create_dir(path)       # Create directory
+await computer.interface.delete_dir(path)       # Delete directory
+await computer.interface.list_dir(path)         # List directory contents
 
 # Accessibility
 await computer.interface.get_accessibility_tree() # Get accessibility tree
+
+# Python Virtual Environment Operations
+await computer.venv_install("demo_venv", ["requests", "macos-pyxa"]) # Install packages in a virtual environment
+await computer.venv_cmd("demo_venv", "python -c 'import requests; print(requests.get(`https://httpbin.org/ip`).json())'") # Run a shell command in a virtual environment
+await computer.venv_exec("demo_venv", python_function_or_code, *args, **kwargs) # Run a Python function in a virtual environment and return the result / raise an exception
+
+# Example: Use sandboxed functions to execute code in a C/ua Container
+from computer.helpers import sandboxed
+
+@sandboxed("demo_venv")
+def greet_and_print(name):
+    """Get the HTML of the current Safari tab"""
+    import PyXA
+    safari = PyXA.Application("Safari")
+    html = safari.current_document.source()
+    print(f"Hello from inside the container, {name}!")
+    return {"greeted": name, "safari_html": html}
+
+# When a @sandboxed function is called, it will execute in the container
+result = await greet_and_print("C/ua")
+# Result: {"greeted": "C/ua", "safari_html": "<html>...</html>"}
+# stdout and stderr are also captured and printed / raised
+print("Result from sandboxed function:", result)
 ```
 
 ## ComputerAgent Reference
@@ -351,14 +397,6 @@ Thank you to all our supporters!
       <td align="center" valign="top" width="14.28%"><a href="https://ricterz.me"><img src="https://avatars.githubusercontent.com/u/5282759?v=4?s=100" width="100px;" alt="Ricter Zheng"/><br /><sub><b>Ricter Zheng</b></sub></a><br /><a href="#code-RicterZ" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://www.trytruffle.ai/"><img src="https://avatars.githubusercontent.com/u/50844303?v=4?s=100" width="100px;" alt="Rahul Karajgikar"/><br /><sub><b>Rahul Karajgikar</b></sub></a><br /><a href="#code-rahulkarajgikar" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/trospix"><img src="https://avatars.githubusercontent.com/u/81363696?v=4?s=100" width="100px;" alt="trospix"/><br /><sub><b>trospix</b></sub></a><br /><a href="#code-trospix" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://wavee.world/invitation/b96d00e6-b802-4a1b-8a66-2e3854a01ffd"><img src="https://avatars.githubusercontent.com/u/22633385?v=4?s=100" width="100px;" alt="Ikko Eltociear Ashimine"/><br /><sub><b>Ikko Eltociear Ashimine</b></sub></a><br /><a href="#code-eltociear" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/dp221125"><img src="https://avatars.githubusercontent.com/u/10572119?v=4?s=100" width="100px;" alt="한석호(MilKyo)"/><br /><sub><b>한석호(MilKyo)</b></sub></a><br /><a href="#code-dp221125" title="Code">💻</a></td>
-    </tr>
-    <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://www.encona.com/"><img src="https://avatars.githubusercontent.com/u/891558?v=4?s=100" width="100px;" alt="Rahim Nathwani"/><br /><sub><b>Rahim Nathwani</b></sub></a><br /><a href="#code-rahimnathwani" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://mjspeck.github.io/"><img src="https://avatars.githubusercontent.com/u/20689127?v=4?s=100" width="100px;" alt="Matt Speck"/><br /><sub><b>Matt Speck</b></sub></a><br /><a href="#code-mjspeck" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/FinnBorge"><img src="https://avatars.githubusercontent.com/u/9272726?v=4?s=100" width="100px;" alt="FinnBorge"/><br /><sub><b>FinnBorge</b></sub></a><br /><a href="#code-FinnBorge" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/jklapacz"><img src="https://avatars.githubusercontent.com/u/5343758?v=4?s=100" width="100px;" alt="Jakub Klapacz"/><br /><sub><b>Jakub Klapacz</b></sub></a><br /><a href="#code-jklapacz" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/evnsnclr"><img src="https://avatars.githubusercontent.com/u/139897548?v=4?s=100" width="100px;" alt="Evan smith"/><br /><sub><b>Evan smith</b></sub></a><br /><a href="#code-evnsnclr" title="Code">💻</a></td>
     </tr>
   </tbody>

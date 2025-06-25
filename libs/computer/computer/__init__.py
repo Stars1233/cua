@@ -6,14 +6,14 @@ import sys
 __version__ = "0.1.0"
 
 # Initialize logging
-logger = logging.getLogger("cua.computer")
+logger = logging.getLogger("computer")
 
 # Initialize telemetry when the package is imported
 try:
     # Import from core telemetry
     from core.telemetry import (
-        is_telemetry_enabled,
         flush,
+        is_telemetry_enabled,
         record_event,
     )
 

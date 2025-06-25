@@ -8,7 +8,7 @@ class InterfaceFactory:
     
     @staticmethod
     def create_interface_for_os(
-        os: Literal['macos', 'linux'],
+        os: Literal['macos', 'linux', 'windows'],
         ip_address: str,
         api_key: Optional[str] = None,
         vm_name: Optional[str] = None
@@ -16,7 +16,7 @@ class InterfaceFactory:
         """Create an interface for the specified OS.
         
         Args:
-            os: Operating system type ('macos' or 'linux')
+            os: Operating system type ('macos', 'linux', or 'windows')
             ip_address: IP address of the computer to control
             api_key: Optional API key for cloud authentication
             vm_name: Optional VM name for cloud authentication
@@ -30,10 +30,13 @@ class InterfaceFactory:
         # Import implementations here to avoid circular imports
         from .macos import MacOSComputerInterface
         from .linux import LinuxComputerInterface
+        from .windows import WindowsComputerInterface
         
         if os == 'macos':
             return MacOSComputerInterface(ip_address, api_key=api_key, vm_name=vm_name)
         elif os == 'linux':
             return LinuxComputerInterface(ip_address, api_key=api_key, vm_name=vm_name)
+        elif os == 'windows':
+            return WindowsComputerInterface(ip_address, api_key=api_key, vm_name=vm_name)
         else:
             raise ValueError(f"Unsupported OS type: {os}")

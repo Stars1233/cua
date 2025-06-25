@@ -8,9 +8,8 @@ import websockets
 
 from ..logger import Logger, LogLevel
 from .base import BaseComputerInterface
-from ..utils import decode_base64_image, bytes_to_image, draw_box, resize_image
-from .models import Key, KeyType
-
+from ..utils import decode_base64_image, encode_base64_image, bytes_to_image, draw_box, resize_image
+from .models import Key, KeyType, MouseButton, CommandResult
 
 class LinuxComputerInterface(BaseComputerInterface):
     """Interface for Linux."""
@@ -22,14 +21,15 @@ class LinuxComputerInterface(BaseComputerInterface):
         self._closed = False
         self._last_ping = 0
         self._ping_interval = 5  # Send ping every 5 seconds
-        self._ping_timeout = 10  # Wait 10 seconds for pong response
+        self._ping_timeout = 120  # Wait 120 seconds for pong response
         self._reconnect_delay = 1  # Start with 1 second delay
         self._max_reconnect_delay = 30  # Maximum delay between reconnection attempts
         self._log_connection_attempts = True  # Flag to control connection attempt logging
         self._authenticated = False  # Track authentication status
+        self._command_lock = asyncio.Lock()  # Lock to ensure only one command at a time
 
         # Set logger name for Linux interface
-        self.logger = Logger("cua.interface.linux", LogLevel.NORMAL)
+        self.logger = Logger("computer.interface.linux", LogLevel.NORMAL)
 
     @property
     def ws_uri(self) -> str:
@@ -86,7 +86,7 @@ class LinuxComputerInterface(BaseComputerInterface):
                                 close_timeout=5,
                                 compression=None,  # Disable compression to reduce overhead
                             ),
-                            timeout=30,
+                            timeout=120,
                         )
                         self.logger.info("WebSocket connection established")
                         
@@ -193,58 +193,62 @@ class LinuxComputerInterface(BaseComputerInterface):
         retry_count = 0
         last_error = None
 
-        while retry_count < max_retries:
-            try:
-                await self._ensure_connection()
-                if not self._ws:
-                    raise ConnectionError("WebSocket connection is not established")
+        # Acquire lock to ensure only one command is processed at a time
+        async with self._command_lock:
+            self.logger.debug(f"Acquired lock for command: {command}")
+            while retry_count < max_retries:
+                try:
+                    await self._ensure_connection()
+                    if not self._ws:
+                        raise ConnectionError("WebSocket connection is not established")
 
-                # Handle authentication if needed
-                if self.api_key and self.vm_name and not self._authenticated:
-                    self.logger.info("Performing authentication handshake...")
-                    auth_message = {
-                        "command": "authenticate",
-                        "params": {
-                            "api_key": self.api_key,
-                            "container_name": self.vm_name
+                    # Handle authentication if needed
+                    if self.api_key and self.vm_name and not self._authenticated:
+                        self.logger.info("Performing authentication handshake...")
+                        auth_message = {
+                            "command": "authenticate",
+                            "params": {
+                                "api_key": self.api_key,
+                                "container_name": self.vm_name
+                            }
                         }
-                    }
-                    await self._ws.send(json.dumps(auth_message))
-                    
-                    # Wait for authentication response
-                    auth_response = await asyncio.wait_for(self._ws.recv(), timeout=10)
-                    auth_result = json.loads(auth_response)
-                    
-                    if not auth_result.get("success"):
-                        error_msg = auth_result.get("error", "Authentication failed")
-                        self.logger.error(f"Authentication failed: {error_msg}")
-                        self._authenticated = False
-                        raise ConnectionError(f"Authentication failed: {error_msg}")
-                    
-                    self.logger.info("Authentication successful")
-                    self._authenticated = True
+                        await self._ws.send(json.dumps(auth_message))
+                        
+                        # Wait for authentication response
+                        auth_response = await asyncio.wait_for(self._ws.recv(), timeout=10)
+                        auth_result = json.loads(auth_response)
+                        
+                        if not auth_result.get("success"):
+                            error_msg = auth_result.get("error", "Authentication failed")
+                            self.logger.error(f"Authentication failed: {error_msg}")
+                            self._authenticated = False
+                            raise ConnectionError(f"Authentication failed: {error_msg}")
+                        
+                        self.logger.info("Authentication successful")
+                        self._authenticated = True
 
-                message = {"command": command, "params": params or {}}
-                await self._ws.send(json.dumps(message))
-                response = await asyncio.wait_for(self._ws.recv(), timeout=30)
-                return json.loads(response)
-            except Exception as e:
-                last_error = e
-                retry_count += 1
-                if retry_count < max_retries:
-                    # Only log at debug level for intermediate retries
-                    self.logger.debug(
-                        f"Command '{command}' failed (attempt {retry_count}/{max_retries}): {e}"
-                    )
-                    await asyncio.sleep(1)
-                    continue
-                else:
-                    # Only log at error level for the final failure
-                    self.logger.error(
-                        f"Failed to send command '{command}' after {max_retries} retries"
-                    )
-                    self.logger.debug(f"Command failure details: {e}")
-                raise last_error if last_error else RuntimeError("Failed to send command")
+                    message = {"command": command, "params": params or {}}
+                    await self._ws.send(json.dumps(message))
+                    response = await asyncio.wait_for(self._ws.recv(), timeout=30)
+                    self.logger.debug(f"Completed command: {command}")
+                    return json.loads(response)
+                except Exception as e:
+                    last_error = e
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        # Only log at debug level for intermediate retries
+                        self.logger.debug(
+                            f"Command '{command}' failed (attempt {retry_count}/{max_retries}): {e}"
+                        )
+                        await asyncio.sleep(1)
+                        continue
+                    else:
+                        # Only log at error level for the final failure
+                        self.logger.error(
+                            f"Failed to send command '{command}' after {max_retries} retries"
+                        )
+                        self.logger.debug(f"Command failure details: {e}")
+                        raise last_error if last_error else RuntimeError("Failed to send command")
 
     async def wait_for_ready(self, timeout: int = 60, interval: float = 1.0):
         """Wait for WebSocket connection to become available."""
@@ -344,6 +348,12 @@ class LinuxComputerInterface(BaseComputerInterface):
             self._ws = None
 
     # Mouse Actions
+    async def mouse_down(self, x: Optional[int] = None, y: Optional[int] = None, button: str = "left") -> None:
+        await self._send_command("mouse_down", {"x": x, "y": y, "button": button})
+    
+    async def mouse_up(self, x: Optional[int] = None, y: Optional[int] = None, button: str = "left") -> None:
+        await self._send_command("mouse_up", {"x": x, "y": y, "button": button})
+    
     async def left_click(self, x: Optional[int] = None, y: Optional[int] = None) -> None:
         await self._send_command("left_click", {"x": x, "y": y})
 
@@ -356,17 +366,23 @@ class LinuxComputerInterface(BaseComputerInterface):
     async def move_cursor(self, x: int, y: int) -> None:
         await self._send_command("move_cursor", {"x": x, "y": y})
 
-    async def drag_to(self, x: int, y: int, button: str = "left", duration: float = 0.5) -> None:
+    async def drag_to(self, x: int, y: int, button: "MouseButton" = "left", duration: float = 0.5) -> None:
         await self._send_command(
             "drag_to", {"x": x, "y": y, "button": button, "duration": duration}
         )
 
-    async def drag(self, path: List[Tuple[int, int]], button: str = "left", duration: float = 0.5) -> None:
+    async def drag(self, path: List[Tuple[int, int]], button: "MouseButton" = "left", duration: float = 0.5) -> None:
         await self._send_command(
             "drag", {"path": path, "button": button, "duration": duration}
         )
 
     # Keyboard Actions
+    async def key_down(self, key: "KeyType") -> None:
+        await self._send_command("key_down", {"key": key})
+    
+    async def key_up(self, key: "KeyType") -> None:
+        await self._send_command("key_up", {"key": key})
+    
     async def type_text(self, text: str) -> None:
         # Temporary fix for https://github.com/trycua/cua/issues/165
         # Check if text contains Unicode characters
@@ -459,6 +475,9 @@ class LinuxComputerInterface(BaseComputerInterface):
         await self._send_command("hotkey", {"keys": actual_keys})
 
     # Scrolling Actions
+    async def scroll(self, x: int, y: int) -> None:
+        await self._send_command("scroll", {"x": x, "y": y})
+    
     async def scroll_down(self, clicks: int = 1) -> None:
         await self._send_command("scroll_down", {"clicks": clicks})
         
@@ -552,11 +571,59 @@ class LinuxComputerInterface(BaseComputerInterface):
         result = await self._send_command("directory_exists", {"path": path})
         return result.get("exists", False)
 
-    async def run_command(self, command: str) -> Tuple[str, str]:
+    async def list_dir(self, path: str) -> list[str]:
+        result = await self._send_command("list_dir", {"path": path})
+        if not result.get("success", False):
+            raise RuntimeError(result.get("error", "Failed to list directory"))
+        return result.get("files", [])
+
+    async def read_text(self, path: str) -> str:
+        result = await self._send_command("read_text", {"path": path})
+        if not result.get("success", False):
+            raise RuntimeError(result.get("error", "Failed to read file"))
+        return result.get("content", "")
+
+    async def write_text(self, path: str, content: str) -> None:
+        result = await self._send_command("write_text", {"path": path, "content": content})
+        if not result.get("success", False):
+            raise RuntimeError(result.get("error", "Failed to write file"))
+
+    async def read_bytes(self, path: str) -> bytes:
+        result = await self._send_command("read_bytes", {"path": path})
+        if not result.get("success", False):
+            raise RuntimeError(result.get("error", "Failed to read file"))
+        content_b64 = result.get("content_b64", "")
+        return decode_base64_image(content_b64)
+
+    async def write_bytes(self, path: str, content: bytes) -> None:
+        result = await self._send_command("write_bytes", {"path": path, "content_b64": encode_base64_image(content)})
+        if not result.get("success", False):
+            raise RuntimeError(result.get("error", "Failed to write file"))
+
+    async def delete_file(self, path: str) -> None:
+        result = await self._send_command("delete_file", {"path": path})
+        if not result.get("success", False):
+            raise RuntimeError(result.get("error", "Failed to delete file"))
+
+    async def create_dir(self, path: str) -> None:
+        result = await self._send_command("create_dir", {"path": path})
+        if not result.get("success", False):
+            raise RuntimeError(result.get("error", "Failed to create directory"))
+
+    async def delete_dir(self, path: str) -> None:
+        result = await self._send_command("delete_dir", {"path": path})
+        if not result.get("success", False):
+            raise RuntimeError(result.get("error", "Failed to delete directory"))
+
+    async def run_command(self, command: str) -> CommandResult:
         result = await self._send_command("run_command", {"command": command})
         if not result.get("success", False):
             raise RuntimeError(result.get("error", "Failed to run command"))
-        return result.get("stdout", ""), result.get("stderr", "")
+        return CommandResult(
+            stdout=result.get("stdout", ""),
+            stderr=result.get("stderr", ""),
+            returncode=result.get("return_code", 0)
+        )
 
     # Accessibility Actions
     async def get_accessibility_tree(self) -> Dict[str, Any]:

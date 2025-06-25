@@ -30,7 +30,7 @@ def _configure_telemetry_logging() -> None:
         level = logging.ERROR
 
     # Configure the main telemetry logger
-    telemetry_logger = logging.getLogger("cua.telemetry")
+    telemetry_logger = logging.getLogger("core.telemetry")
     telemetry_logger.setLevel(level)
 
 
@@ -46,11 +46,11 @@ try:
 
     POSTHOG_AVAILABLE = True
 except ImportError:
-    logger = logging.getLogger("cua.telemetry")
+    logger = logging.getLogger("core.telemetry")
     logger.info("PostHog not available. Install with: pdm add posthog")
     POSTHOG_AVAILABLE = False
 
-logger = logging.getLogger("cua.telemetry")
+logger = logging.getLogger("core.telemetry")
 
 
 # Check environment variables for global telemetry opt-out
@@ -292,10 +292,9 @@ def set_telemetry_log_level(level: Optional[int] = None) -> None:
 
     # Set the level for all telemetry-related loggers
     telemetry_loggers = [
-        "cua.telemetry",
         "core.telemetry",
-        "cua.agent.telemetry",
-        "cua.computer.telemetry",
+        "agent.telemetry",
+        "computer.telemetry",
         "posthog",
     ]
 

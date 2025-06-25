@@ -50,8 +50,8 @@ class BashTool(BaseBashTool, BaseAnthropicTool):
 
         try:
             async with asyncio.timeout(self._timeout):
-                stdout, stderr = await self.computer.interface.run_command(command)
-                return CLIResult(output=stdout or "", error=stderr or "")
+                result = await self.computer.interface.run_command(command)
+                return CLIResult(output=result.stdout or "", error=result.stderr or "")
         except asyncio.TimeoutError as e:
             raise ToolError(f"Command timed out after {self._timeout} seconds") from e
         except Exception as e:

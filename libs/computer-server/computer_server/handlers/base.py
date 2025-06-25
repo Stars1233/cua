@@ -16,6 +16,59 @@ class BaseAccessibilityHandler(ABC):
         """Find an element in the accessibility tree by criteria."""
         pass
 
+class BaseFileHandler(ABC):
+    """Abstract base class for OS-specific file handlers."""
+    
+    @abstractmethod
+    async def file_exists(self, path: str) -> Dict[str, Any]:
+        """Check if a file exists at the specified path."""
+        pass
+
+    @abstractmethod
+    async def directory_exists(self, path: str) -> Dict[str, Any]:
+        """Check if a directory exists at the specified path."""
+        pass
+
+    @abstractmethod
+    async def list_dir(self, path: str) -> Dict[str, Any]:
+        """List the contents of a directory."""
+        pass
+
+    @abstractmethod
+    async def read_text(self, path: str) -> Dict[str, Any]:
+        """Read the text contents of a file."""
+        pass
+
+    @abstractmethod
+    async def write_text(self, path: str, content: str) -> Dict[str, Any]:
+        """Write text content to a file."""
+        pass
+    
+    @abstractmethod
+    async def read_bytes(self, path: str) -> Dict[str, Any]:
+        """Read the binary contents of a file. Sent over the websocket as a base64 string."""
+        pass
+
+    @abstractmethod
+    async def write_bytes(self, path: str, content_b64: str) -> Dict[str, Any]:
+        """Write binary content to a file. Sent over the websocket as a base64 string."""
+        pass
+
+    @abstractmethod
+    async def delete_file(self, path: str) -> Dict[str, Any]:
+        """Delete a file."""
+        pass
+
+    @abstractmethod
+    async def create_dir(self, path: str) -> Dict[str, Any]:
+        """Create a directory."""
+        pass
+
+    @abstractmethod
+    async def delete_dir(self, path: str) -> Dict[str, Any]:
+        """Delete a directory."""
+        pass
+
 class BaseAutomationHandler(ABC):
     """Abstract base class for OS-specific automation handlers.
     
@@ -28,6 +81,16 @@ class BaseAutomationHandler(ABC):
     """
     
     # Mouse Actions
+    @abstractmethod
+    async def mouse_down(self, x: Optional[int] = None, y: Optional[int] = None, button: str = "left") -> Dict[str, Any]:
+        """Perform a mouse down at the current or specified position."""
+        pass
+    
+    @abstractmethod
+    async def mouse_up(self, x: Optional[int] = None, y: Optional[int] = None, button: str = "left") -> Dict[str, Any]:
+        """Perform a mouse up at the current or specified position."""
+        pass
+    
     @abstractmethod
     async def left_click(self, x: Optional[int] = None, y: Optional[int] = None) -> Dict[str, Any]:
         """Perform a left click at the current or specified position."""
@@ -73,6 +136,16 @@ class BaseAutomationHandler(ABC):
 
     # Keyboard Actions
     @abstractmethod
+    async def key_down(self, key: str) -> Dict[str, Any]:
+        """Press and hold the specified key."""
+        pass
+    
+    @abstractmethod
+    async def key_up(self, key: str) -> Dict[str, Any]:
+        """Release the specified key."""
+        pass
+    
+    @abstractmethod
     async def type_text(self, text: str) -> Dict[str, Any]:
         """Type the specified text."""
         pass
@@ -88,6 +161,11 @@ class BaseAutomationHandler(ABC):
         pass
 
     # Scrolling Actions
+    @abstractmethod
+    async def scroll(self, x: int, y: int) -> Dict[str, Any]:
+        """Scroll the specified amount."""
+        pass
+    
     @abstractmethod
     async def scroll_down(self, clicks: int = 1) -> Dict[str, Any]:
         """Scroll down by the specified number of clicks."""

@@ -1,5 +1,17 @@
 from enum import Enum
 from typing import Dict, List, Any, TypedDict, Union, Literal
+from dataclasses import dataclass
+
+@dataclass
+class CommandResult:
+    stdout: str
+    stderr: str  
+    returncode: int
+    
+    def __init__(self, stdout: str, stderr: str, returncode: int):
+        self.stdout = stdout
+        self.stderr = stderr
+        self.returncode = returncode
 
 # Navigation key literals
 NavigationKey = Literal['pagedown', 'pageup', 'home', 'end', 'left', 'right', 'up', 'down']
@@ -105,6 +117,9 @@ class Key(Enum):
 
 # Combined key type
 KeyType = Union[Key, NavigationKey, SpecialKey, ModifierKey, FunctionKey, str]
+
+# Key type for mouse actions
+MouseButton = Literal['left', 'right', 'middle']
 
 class AccessibilityWindow(TypedDict):
     """Information about a window in the accessibility tree."""

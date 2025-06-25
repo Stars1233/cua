@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 import posthog
 from core import __version__
 
-logger = logging.getLogger("cua.telemetry")
+logger = logging.getLogger("core.telemetry")
 
 # Controls how frequently telemetry will be sent (percentage)
 TELEMETRY_SAMPLE_RATE = 100  # 100% sampling rate (was 5%)

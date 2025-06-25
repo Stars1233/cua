@@ -112,5 +112,27 @@ class VMProviderFactory:
                     "The CloudProvider is not fully implemented yet. "
                     "Please use LUME or LUMIER provider instead."
                 ) from e
+        elif provider_type == VMProviderType.WINSANDBOX:
+            try:
+                from .winsandbox import WinSandboxProvider, HAS_WINSANDBOX
+                if not HAS_WINSANDBOX:
+                    raise ImportError(
+                        "pywinsandbox is required for WinSandboxProvider. "
+                        "Please install it with 'pip install -U git+https://github.com/karkason/pywinsandbox.git'"
+                    )
+                return WinSandboxProvider(
+                    port=port,
+                    host=host,
+                    storage=storage,
+                    verbose=verbose,
+                    ephemeral=ephemeral,
+                    **kwargs
+                )
+            except ImportError as e:
+                logger.error(f"Failed to import WinSandboxProvider: {e}")
+                raise ImportError(
+                    "pywinsandbox is required for WinSandboxProvider. "
+                    "Please install it with 'pip install -U git+https://github.com/karkason/pywinsandbox.git'"
+                ) from e
         else:
             raise ValueError(f"Unsupported provider type: {provider_type}")

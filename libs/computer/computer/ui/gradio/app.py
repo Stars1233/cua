@@ -463,7 +463,7 @@ async def execute(name, action, arguments):
         elif action == "left_click":
             if "x" in arguments and "y" in arguments:
                 await computer.interface.move_cursor(arguments["x"], arguments["y"])
-            await computer.interface.left_click()
+            await computer.interface.left_click(arguments["x"], arguments["y"])
             await asyncio.sleep(0.5)
         elif action == "right_click":
             if "x" in arguments and "y" in arguments:
@@ -528,43 +528,100 @@ async def execute(name, action, arguments):
     
     return results
 
-async def handle_init_computer(os_choice: str):
-    """Initialize the computer instance and tools for macOS or Ubuntu"""
+async def handle_init_computer(os_choice: str, app_list=None, provider="lume", container_name=None, api_key=None):
+    """Initialize the computer instance and tools for macOS or Ubuntu or Windows
+    
+    Args:
+        os_choice: The OS to use ("macOS" or "Ubuntu" or "Windows")
+        app_list: Optional list of apps to focus on using the app-use experiment
+        provider: The provider to use ("lume" or "self" or "cloud")
+        container_name: The container name to use for cloud provider
+        api_key: The API key to use for cloud provider
+    """
     global computer, tool_call_logs, tools
-
+    
+    # Check if we should enable app-use experiment
+    use_app_experiment = app_list and len(app_list) > 0
+    experiments = ["app-use"] if use_app_experiment else None
+    
+    # Determine if we should use host computer server
+    use_host_computer_server = provider == "self"
+    
     if os_choice == "Ubuntu":
-        computer = Computer(
-            image="ubuntu-noble-vanilla:latest",
-            os_type="linux",
-            provider_type=VMProviderType.LUME,
-            display="1024x768",
-            memory="8GB",
-            cpu="4"
-        )
         os_type_str = "linux"
         image_str = "ubuntu-noble-vanilla:latest"
+    elif os_choice == "Windows":
+        os_type_str = "windows"
+        image_str = "windows-11-vanilla:latest"
+    else:
+        os_type_str = "macos"
+        image_str = "macos-sequoia-cua:latest"
+    
+    # Create computer instance with appropriate configuration
+    if use_host_computer_server:
+        computer = Computer(
+            os_type=os_type_str,
+            use_host_computer_server=True,
+            experiments=experiments
+        )
+    elif provider == "cloud":
+        # Use API key from environment variable or field input
+        cloud_api_key = os.environ.get("CUA_API_KEY") or api_key
+        computer = Computer(
+            os_type=os_type_str,
+            provider_type=VMProviderType.CLOUD,
+            name=container_name,
+            api_key=cloud_api_key,
+            experiments=experiments
+        )
+    elif provider == "winsandbox":
+        computer = Computer(
+            os_type="windows",
+            provider_type=VMProviderType.WINSANDBOX,
+            experiments=experiments
+        )
     else:
         computer = Computer(
-            image="macos-sequoia-cua:latest",
-            os_type="macos",
+            image=image_str,
+            os_type=os_type_str,
             provider_type=VMProviderType.LUME,
             display="1024x768",
             memory="8GB",
-            cpu="4"
+            cpu="4",
+            experiments=experiments
         )
-        os_type_str = "macos"
-        image_str = "macos-sequoia-cua:latest"
 
     await computer.run()
+    
+    # If app list is provided, create desktop from apps
+    if use_app_experiment:
+        computer = computer.create_desktop_from_apps(app_list)
 
     # Log computer initialization as a tool call
-    result = await execute("computer", "initialize", {
+    init_params = {
         "os": os_type_str,
-        "image": image_str,
-        "display": "1024x768",
-        "memory": "8GB",
-        "cpu": "4"
-    })
+        "provider": provider
+    }
+    
+    # Add VM-specific parameters if not using host computer server
+    if not use_host_computer_server:
+        init_params.update({
+            "image": image_str,
+            "display": "1024x768",
+            "memory": "8GB",
+            "cpu": "4"
+        })
+    
+    # Add app list to the log if provided
+    if use_app_experiment:
+        init_params["apps"] = app_list
+        init_params["experiments"] = ["app-use"]
+    
+    # Add container name to the log if using cloud provider
+    if provider == "cloud":
+        init_params["container_name"] = container_name
+    
+    result = await execute("computer", "initialize", init_params)
 
     return result["screenshot"], json.dumps(tool_call_logs, indent=2)
 
@@ -1029,12 +1086,66 @@ def create_gradio_ui():
                     setup_status = gr.Textbox(label="Setup Status", value="")
                 
                 with gr.Group():
-                    os_choice = gr.Radio(
-                        label="OS",
-                        choices=["macOS", "Ubuntu"],
-                        value="macOS",
-                        interactive=False # disable until the ubuntu image is ready
-                    )
+                    with gr.Accordion("Computer Configuration", open=False):
+                        with gr.Row():
+                            os_choice = gr.Radio(
+                                label="OS",
+                                choices=["macOS", "Ubuntu", "Windows"],
+                                value="macOS",
+                            )
+                            
+                            # Provider selection radio
+                            provider_choice = gr.Radio(
+                                label="Provider",
+                                choices=["lume", "self", "cloud", "winsandbox"],
+                                value="lume",
+                                info="'lume' uses a VM, 'self' uses the host computer server, 'cloud' uses a cloud container"
+                            )
+                        
+                        # Container name field for cloud provider (initially hidden)
+                        container_name = gr.Textbox(
+                            label="Container Name",
+                            placeholder="Enter your container name",
+                            visible=False,
+                            info="Get your container from [trycua.com](https://trycua.com/)"
+                        )
+                        
+                        # Check if CUA_API_KEY is set in environment
+                        has_cua_key = os.environ.get("CUA_API_KEY") is not None
+                        
+                        # API key field for cloud provider (visible only if no env key and cloud selected)
+                        api_key_field = gr.Textbox(
+                            label="CUA API Key",
+                            placeholder="Enter your CUA API key",
+                            type="password",
+                            visible=False,
+                            info="Required for cloud provider. Set CUA_API_KEY environment variable to hide this field."
+                        )
+                        
+                        # App filtering dropdown for app-use experiment
+                        app_filter = gr.Dropdown(
+                            label="Filter by apps (App-Use)",
+                            multiselect=True,
+                            allow_custom_value=True,
+                            info="When apps are selected, the computer will focus on those apps using the app-use experiment"
+                        )
+                        
+                        # Function to show/hide container name and API key fields based on provider selection
+                        def update_cloud_fields_visibility(provider):
+                            show_container = provider == "cloud"
+                            show_api_key = provider == "cloud" and not has_cua_key
+                            return (
+                                gr.update(visible=show_container),
+                                gr.update(visible=show_api_key)
+                            )
+                        
+                        # Connect provider choice to field visibility
+                        provider_choice.change(
+                            update_cloud_fields_visibility,
+                            inputs=provider_choice,
+                            outputs=[container_name, api_key_field]
+                        )
+                    
                     start_btn = gr.Button("Initialize Computer")
                 
                 with gr.Group():
@@ -1098,7 +1209,7 @@ def create_gradio_ui():
                         value=False
                     )
                     message_submit_btn = gr.Button("Submit Message")
-                    message_status = gr.Textbox(label="Status", value="")
+                    message_status = gr.Textbox(label="Status")
                 
                 with gr.Accordion("Clipboard Operations", open=False):
                     clipboard_content = gr.Textbox(label="Clipboard Content")
@@ -1199,7 +1310,7 @@ def create_gradio_ui():
         )
                 
         img.select(handle_click, inputs=[img, click_type], outputs=[img, action_log])
-        start_btn.click(handle_init_computer, inputs=[os_choice], outputs=[img, action_log])
+        start_btn.click(handle_init_computer, inputs=[os_choice, app_filter, provider_choice, container_name, api_key_field], outputs=[img, action_log])
         wait_btn.click(handle_wait, outputs=[img, action_log])
         
         # DONE and FAIL buttons just do a placeholder action

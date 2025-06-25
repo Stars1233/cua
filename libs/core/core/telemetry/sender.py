@@ -3,7 +3,7 @@
 import logging
 from typing import Any, Dict
 
-logger = logging.getLogger("cua.telemetry")
+logger = logging.getLogger("core.telemetry")
 
 
 def send_telemetry(payload: Dict[str, Any]) -> bool:

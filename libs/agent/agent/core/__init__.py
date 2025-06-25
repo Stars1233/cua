@@ -2,7 +2,7 @@
 
 from .factory import BaseLoop
 from .messages import (
-    BaseMessageManager,
+    StandardMessageManager,
     ImageRetentionConfig,
 )
 from .callbacks import (
@@ -18,7 +18,7 @@ __all__ = [
     "BaseLoop",
     "CallbackManager",
     "CallbackHandler",
-    "BaseMessageManager",
+    "StandardMessageManager",
     "ImageRetentionConfig",
     "BaseCallbackManager",
     "ContentCallback",

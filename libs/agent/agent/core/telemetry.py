@@ -34,7 +34,7 @@ flush = _default_flush
 is_telemetry_enabled = _default_is_telemetry_enabled
 is_telemetry_globally_disabled = _default_is_telemetry_globally_disabled
 
-logger = logging.getLogger("cua.agent.telemetry")
+logger = logging.getLogger("agent.telemetry")
 
 try:
     # Import from core telemetry

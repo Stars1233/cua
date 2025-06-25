@@ -10,6 +10,7 @@ class VMProviderType(StrEnum):
     LUME = "lume"
     LUMIER = "lumier"
     CLOUD = "cloud"
+    WINSANDBOX = "winsandbox"
     UNKNOWN = "unknown"
 
 

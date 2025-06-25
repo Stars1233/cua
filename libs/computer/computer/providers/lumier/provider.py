@@ -305,7 +305,7 @@ class LumierProvider(BaseVMProvider):
             cmd = ["docker", "run", "-d", "--name", self.container_name]
             
             cmd.extend(["-p", f"{self.vnc_port}:8006"])
-            print(f"Using specified noVNC_port: {self.vnc_port}")
+            logger.debug(f"Using specified noVNC_port: {self.vnc_port}")
                 
             # Set API URL using the API port
             self._api_url = f"http://{self.host}:{self.api_port}"
@@ -324,7 +324,7 @@ class LumierProvider(BaseVMProvider):
                     "-v", f"{storage_dir}:/storage", 
                     "-e", f"HOST_STORAGE_PATH={storage_dir}"
                 ])
-                print(f"Using persistent storage at: {storage_dir}")
+                logger.debug(f"Using persistent storage at: {storage_dir}")
             
             # Add shared folder volume mount if shared_path is specified
             if self.shared_path:
@@ -337,12 +337,12 @@ class LumierProvider(BaseVMProvider):
                     "-v", f"{shared_dir}:/shared",
                     "-e", f"HOST_SHARED_PATH={shared_dir}"
                 ])
-                print(f"Using shared folder at: {shared_dir}")
+                logger.debug(f"Using shared folder at: {shared_dir}")
             
             # Add environment variables
             # Always use the container_name as the VM_NAME for consistency
             # Use the VM image passed from the Computer class
-            print(f"Using VM image: {self.image}")
+            logger.debug(f"Using VM image: {self.image}")
             
             # If ghcr.io is in the image, use the full image name
             if "ghcr.io" in self.image:
@@ -362,22 +362,22 @@ class LumierProvider(BaseVMProvider):
             
             # First check if the image exists locally
             try:
-                print(f"Checking if Docker image {lumier_image} exists locally...")
+                logger.debug(f"Checking if Docker image {lumier_image} exists locally...")
                 check_image_cmd = ["docker", "image", "inspect", lumier_image]
                 subprocess.run(check_image_cmd, capture_output=True, check=True)
-                print(f"Docker image {lumier_image} found locally.")
+                logger.debug(f"Docker image {lumier_image} found locally.")
             except subprocess.CalledProcessError:
                 # Image doesn't exist locally
-                print(f"\nWARNING: Docker image {lumier_image} not found locally.")
-                print("The system will attempt to pull it from Docker Hub, which may fail if you have network connectivity issues.")
-                print("If the Docker pull fails, you may need to manually pull the image first with:")
-                print(f"  docker pull {lumier_image}\n")
+                logger.warning(f"\nWARNING: Docker image {lumier_image} not found locally.")
+                logger.warning("The system will attempt to pull it from Docker Hub, which may fail if you have network connectivity issues.")
+                logger.warning("If the Docker pull fails, you may need to manually pull the image first with:")
+                logger.warning(f"  docker pull {lumier_image}\n")
             
             # Add the image to the command
             cmd.append(lumier_image)
             
             # Print the Docker command for debugging
-            print(f"DOCKER COMMAND: {' '.join(cmd)}")
+            logger.debug(f"DOCKER COMMAND: {' '.join(cmd)}")
             
             # Run the container with improved error handling
             try:
@@ -395,8 +395,8 @@ class LumierProvider(BaseVMProvider):
                 raise
             
             # Container started, now check VM status with polling
-            print("Container started, checking VM status...")
-            print("NOTE: This may take some time while the VM image is being pulled and initialized")
+            logger.debug("Container started, checking VM status...")
+            logger.debug("NOTE: This may take some time while the VM image is being pulled and initialized")
             
             # Start a background thread to show container logs in real-time
             import threading
@@ -404,8 +404,8 @@ class LumierProvider(BaseVMProvider):
             def show_container_logs():
                 # Give the container a moment to start generating logs
                 time.sleep(1)
-                print(f"\n---- CONTAINER LOGS FOR '{name}' (LIVE) ----")
-                print("Showing logs as they are generated. Press Ctrl+C to stop viewing logs...\n")
+                logger.debug(f"\n---- CONTAINER LOGS FOR '{name}' (LIVE) ----")
+                logger.debug("Showing logs as they are generated. Press Ctrl+C to stop viewing logs...\n")
                 
                 try:
                     # Use docker logs with follow option
@@ -415,17 +415,17 @@ class LumierProvider(BaseVMProvider):
                     
                     # Read and print logs line by line
                     for line in process.stdout:
-                        print(line, end='')
+                        logger.debug(line, end='')
                         
                         # Break if process has exited
                         if process.poll() is not None:
                             break
                 except Exception as e:
-                    print(f"\nError showing container logs: {e}")
+                    logger.error(f"\nError showing container logs: {e}")
                     if self.verbose:
                         logger.error(f"Error in log streaming thread: {e}")
                 finally:
-                    print("\n---- LOG STREAMING ENDED ----")
+                    logger.debug("\n---- LOG STREAMING ENDED ----")
                     # Make sure process is terminated
                     if 'process' in locals() and process.poll() is None:
                         process.terminate()
@@ -452,11 +452,11 @@ class LumierProvider(BaseVMProvider):
                         else:  
                             wait_time = min(30, 5 + (attempt * 2))
                         
-                        print(f"Waiting {wait_time}s before retry #{attempt+1}...")
+                        logger.debug(f"Waiting {wait_time}s before retry #{attempt+1}...")
                         await asyncio.sleep(wait_time)
                     
                     # Try to get VM status
-                    print(f"Checking VM status (attempt {attempt+1})...")
+                    logger.debug(f"Checking VM status (attempt {attempt+1})...")
                     vm_status = await self.get_vm(name)
                     
                     # Check for API errors
@@ -468,20 +468,20 @@ class LumierProvider(BaseVMProvider):
                         # since _lume_api_get already logged the technical details
                         if consecutive_errors == 1 or attempt % 5 == 0:
                             if 'Empty reply from server' in error_msg:
-                                print("API server is starting up - container is running, but API isn't fully initialized yet.")
-                                print("This is expected during the initial VM setup - will continue polling...")
+                                logger.info("API server is starting up - container is running, but API isn't fully initialized yet.")
+                                logger.info("This is expected during the initial VM setup - will continue polling...")
                             else:
                                 # Don't repeat the exact same error message each time
-                                logger.debug(f"API request error (attempt {attempt+1}): {error_msg}")
+                                logger.warning(f"API request error (attempt {attempt+1}): {error_msg}")
                                 # Just log that we're still working on it
                                 if attempt > 3:
-                                    print("Still waiting for the API server to become available...")
+                                    logger.debug("Still waiting for the API server to become available...")
                             
                         # If we're getting errors but container is running, that's normal during startup
                         if vm_status.get('status') == 'running':
                             if not vm_running:
-                                print("Container is running, waiting for the VM within it to become fully ready...")
-                                print("This might take a minute while the VM initializes...")
+                                logger.info("Container is running, waiting for the VM within it to become fully ready...")
+                                logger.info("This might take a minute while the VM initializes...")
                                 vm_running = True
                         
                         # Increase counter and continue
@@ -497,35 +497,35 @@ class LumierProvider(BaseVMProvider):
                         
                         # Check if we have an IP address, which means the VM is fully ready
                         if 'ip_address' in vm_status and vm_status['ip_address']:
-                            print(f"VM is now fully running with IP: {vm_status.get('ip_address')}")
+                            logger.info(f"VM is now fully running with IP: {vm_status.get('ip_address')}")
                             if 'vnc_url' in vm_status and vm_status['vnc_url']:
-                                print(f"VNC URL: {vm_status.get('vnc_url')}")
+                                logger.info(f"VNC URL: {vm_status.get('vnc_url')}")
                             return vm_status
                         else:
-                            print("VM is running but still initializing network interfaces...")
-                            print("Waiting for IP address to be assigned...")
+                            logger.debug("VM is running but still initializing network interfaces...")
+                            logger.debug("Waiting for IP address to be assigned...")
                     else:
                         # VM exists but might still be starting up
                         status = vm_status.get('status', 'unknown')
-                        print(f"VM found but status is: {status}. Continuing to poll...")
+                        logger.debug(f"VM found but status is: {status}. Continuing to poll...")
                     
                     # Increase counter for next iteration's delay calculation
                     attempt += 1
                     
                     # If we reach a very large number of attempts, give a reassuring message but continue
                     if attempt % 10 == 0:
-                        print(f"Still waiting after {attempt} attempts. This might take several minutes for first-time setup.")
+                        logger.debug(f"Still waiting after {attempt} attempts. This might take several minutes for first-time setup.")
                         if not vm_running and attempt >= 20:
-                            print("\nNOTE: First-time VM initialization can be slow as images are downloaded.")
-                            print("If this continues for more than 10 minutes, you may want to check:")
-                            print("  1. Docker logs with: docker logs " + name)
-                            print("  2. If your network can access container registries")
-                            print("Press Ctrl+C to abort if needed.\n")
+                            logger.warning("\nNOTE: First-time VM initialization can be slow as images are downloaded.")
+                            logger.warning("If this continues for more than 10 minutes, you may want to check:")
+                            logger.warning("  1. Docker logs with: docker logs " + name)
+                            logger.warning("  2. If your network can access container registries")
+                            logger.warning("Press Ctrl+C to abort if needed.\n")
                             
                     # After 150 attempts (likely over 30-40 minutes), return current status
                     if attempt >= 150:
-                        print(f"Reached 150 polling attempts. VM status is: {vm_status.get('status', 'unknown')}")
-                        print("Returning current VM status, but please check Docker logs if there are issues.")
+                        logger.debug(f"Reached 150 polling attempts. VM status is: {vm_status.get('status', 'unknown')}")
+                        logger.debug("Returning current VM status, but please check Docker logs if there are issues.")
                         return vm_status
                     
                 except Exception as e:
@@ -535,9 +535,9 @@ class LumierProvider(BaseVMProvider):
                     
                     # If we've had too many consecutive errors, might be a deeper problem
                     if consecutive_errors >= 10:
-                        print(f"\nWARNING: Encountered {consecutive_errors} consecutive errors while checking VM status.")
-                        print("You may need to check the Docker container logs or restart the process.")
-                        print(f"Error details: {str(e)}\n")
+                        logger.warning(f"\nWARNING: Encountered {consecutive_errors} consecutive errors while checking VM status.")
+                        logger.warning("You may need to check the Docker container logs or restart the process.")
+                        logger.warning(f"Error details: {str(e)}\n")
                         
                     # Increase attempt counter for next iteration
                     attempt += 1
@@ -545,7 +545,7 @@ class LumierProvider(BaseVMProvider):
                     # After many consecutive errors, add a delay to avoid hammering the system
                     if attempt > 5:
                         error_delay = min(30, 10 + attempt)
-                        print(f"Multiple connection errors, waiting {error_delay}s before next attempt...")
+                        logger.warning(f"Multiple connection errors, waiting {error_delay}s before next attempt...")
                         await asyncio.sleep(error_delay)
         
         except subprocess.CalledProcessError as e:
@@ -568,7 +568,7 @@ class LumierProvider(BaseVMProvider):
         api_ready = False
         container_running = False
         
-        print(f"Waiting for container {container_name} to be ready (timeout: {timeout}s)...")
+        logger.debug(f"Waiting for container {container_name} to be ready (timeout: {timeout}s)...")
         
         while time.time() - start_time < timeout:
             # Check if container is running
@@ -579,7 +579,6 @@ class LumierProvider(BaseVMProvider):
                 
                 if container_status and container_status.startswith("Up"):
                     container_running = True
-                    print(f"Container {container_name} is running")
                     logger.info(f"Container {container_name} is running with status: {container_status}")
                 else:
                     logger.warning(f"Container {container_name} not yet running, status: {container_status}")
@@ -603,7 +602,6 @@ class LumierProvider(BaseVMProvider):
                 
                 if result.returncode == 0 and "ok" in result.stdout.lower():
                     api_ready = True
-                    print(f"API is ready at {api_url}")
                     logger.info(f"API is ready at {api_url}")
                     break
                 else:
@@ -621,7 +619,6 @@ class LumierProvider(BaseVMProvider):
                     if vm_result.returncode == 0 and vm_result.stdout.strip():
                         # VM API responded with something - consider the API ready
                         api_ready = True
-                        print(f"VM API is ready at {vm_api_url}")
                         logger.info(f"VM API is ready at {vm_api_url}")
                         break
                     else:
@@ -643,7 +640,6 @@ class LumierProvider(BaseVMProvider):
                         else:
                             curl_error = f"Unknown curl error code: {curl_code}"
                             
-                        print(f"API not ready yet: {curl_error}")
                         logger.info(f"API not ready yet: {curl_error}")
             except subprocess.SubprocessError as e:
                 logger.warning(f"Error checking API status: {e}")
@@ -652,22 +648,19 @@ class LumierProvider(BaseVMProvider):
             # a bit longer before checking again, as the container may still be initializing
             elapsed_seconds = time.time() - start_time
             if int(elapsed_seconds) % 5 == 0:  # Only print status every 5 seconds to reduce verbosity
-                print(f"Waiting for API to initialize... ({elapsed_seconds:.1f}s / {timeout}s)")
+                logger.debug(f"Waiting for API to initialize... ({elapsed_seconds:.1f}s / {timeout}s)")
             
             await asyncio.sleep(3)  # Longer sleep between API checks
         
         # Handle timeout - if the container is running but API is not ready, that's not
         # necessarily an error - the API might just need more time to start up
         if not container_running:
-            print(f"Timed out waiting for container {container_name} to start")
             logger.warning(f"Timed out waiting for container {container_name} to start")
             return False
         
         if not api_ready:
-            print(f"Container {container_name} is running, but API is not fully ready yet.")
-            print("Proceeding with operations. API will become available shortly.")
-            print("NOTE: You may see some 'API request failed' messages while the API initializes.")
             logger.warning(f"Container {container_name} is running, but API is not fully ready yet.")
+            logger.warning(f"NOTE: You may see some 'API request failed' messages while the API initializes.")
         
         # Return True if container is running, even if API isn't ready yet
         # This allows VM operations to proceed, with appropriate retries for API calls
@@ -777,8 +770,8 @@ class LumierProvider(BaseVMProvider):
                 # For follow mode with timeout, we'll run the command and handle the timeout
                 log_cmd.append(container_name)
                 logger.info(f"Following logs for container '{container_name}' with timeout {timeout}s")
-                print(f"\n---- CONTAINER LOGS FOR '{container_name}' (LIVE) ----")
-                print(f"Press Ctrl+C to stop following logs\n")
+                logger.info(f"\n---- CONTAINER LOGS FOR '{container_name}' (LIVE) ----")
+                logger.info(f"Press Ctrl+C to stop following logs\n")
                 
                 try:
                     # Run with timeout
@@ -790,7 +783,7 @@ class LumierProvider(BaseVMProvider):
                             process.wait(timeout=timeout)
                         except subprocess.TimeoutExpired:
                             process.terminate()  # Stop after timeout
-                            print(f"\n---- LOG FOLLOWING STOPPED (timeout {timeout}s reached) ----")
+                            logger.info(f"\n---- LOG FOLLOWING STOPPED (timeout {timeout}s reached) ----")
                     else:
                         # Without timeout, wait for user interruption
                         process.wait()
@@ -798,14 +791,14 @@ class LumierProvider(BaseVMProvider):
                     return "Logs were displayed to console in follow mode"
                 except KeyboardInterrupt:
                     process.terminate()
-                    print("\n---- LOG FOLLOWING STOPPED (user interrupted) ----")
+                    logger.info("\n---- LOG FOLLOWING STOPPED (user interrupted) ----")
                     return "Logs were displayed to console in follow mode (interrupted)"
             else:
                 # For follow mode without timeout, we'll print a helpful message
                 log_cmd.append(container_name)
                 logger.info(f"Following logs for container '{container_name}' indefinitely")
-                print(f"\n---- CONTAINER LOGS FOR '{container_name}' (LIVE) ----")
-                print(f"Press Ctrl+C to stop following logs\n")
+                logger.info(f"\n---- CONTAINER LOGS FOR '{container_name}' (LIVE) ----")
+                logger.info(f"Press Ctrl+C to stop following logs\n")
                 
                 try:
                     # Run the command and let it run until interrupted
@@ -814,7 +807,7 @@ class LumierProvider(BaseVMProvider):
                     return "Logs were displayed to console in follow mode"
                 except KeyboardInterrupt:
                     process.terminate()
-                    print("\n---- LOG FOLLOWING STOPPED (user interrupted) ----")
+                    logger.info("\n---- LOG FOLLOWING STOPPED (user interrupted) ----")
                     return "Logs were displayed to console in follow mode (interrupted)"
         else:
             # For non-follow mode, capture and return the logs as a string
@@ -827,11 +820,11 @@ class LumierProvider(BaseVMProvider):
                 
                 # Only print header and logs if there's content
                 if logs.strip():
-                    print(f"\n---- CONTAINER LOGS FOR '{container_name}' (LAST {num_lines} LINES) ----\n")
-                    print(logs)
-                    print(f"\n---- END OF LOGS ----")
+                    logger.info(f"\n---- CONTAINER LOGS FOR '{container_name}' (LAST {num_lines} LINES) ----\n")
+                    logger.info(logs)
+                    logger.info(f"\n---- END OF LOGS ----")
                 else:
-                    print(f"\nNo logs available for container '{container_name}'")
+                    logger.info(f"\nNo logs available for container '{container_name}'")
                     
                 return logs
             except subprocess.CalledProcessError as e:

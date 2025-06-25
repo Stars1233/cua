@@ -92,8 +92,8 @@ install_package "libs/core" "core"
 # Install pylume (base dependency)
 install_package "libs/pylume" "pylume"
 
-# Install computer (depends on pylume)
-install_package "libs/computer" "computer"
+# Install computer with all its dependencies and extras
+install_package "libs/computer" "computer" "all"
 
 # Install omniparser
 install_package "libs/som" "som"

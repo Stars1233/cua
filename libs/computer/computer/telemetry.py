@@ -9,10 +9,10 @@ TELEMETRY_AVAILABLE = False
 
 try:
     from core.telemetry import (
-        record_event,
         increment,
         is_telemetry_enabled,
         is_telemetry_globally_disabled,
+        record_event,
     )
 
     def increment_counter(counter_name: str, value: int = 1) -> None:
@@ -22,14 +22,14 @@ try:
 
     def set_dimension(name: str, value: Any) -> None:
         """Set a dimension that will be attached to all events."""
-        logger = logging.getLogger("cua.computer.telemetry")
+        logger = logging.getLogger("computer.telemetry")
         logger.debug(f"Setting dimension {name}={value}")
 
     TELEMETRY_AVAILABLE = True
-    logger = logging.getLogger("cua.computer.telemetry")
+    logger = logging.getLogger("computer.telemetry")
     logger.info("Successfully imported telemetry")
 except ImportError as e:
-    logger = logging.getLogger("cua.computer.telemetry")
+    logger = logging.getLogger("computer.telemetry")
     logger.warning(f"Could not import telemetry: {e}")
     TELEMETRY_AVAILABLE = False
 
@@ -40,7 +40,7 @@ def _noop(*args: Any, **kwargs: Any) -> None:
     pass
 
 
-logger = logging.getLogger("cua.computer.telemetry")
+logger = logging.getLogger("computer.telemetry")
 
 # If telemetry isn't available, use no-op functions
 if not TELEMETRY_AVAILABLE:

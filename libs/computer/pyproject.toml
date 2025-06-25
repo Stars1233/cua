@@ -4,7 +4,7 @@ build-backend = "pdm.backend"
 
 [project]
 name = "cua-computer"
-version = "0.1.0"
+version = "0.3.0"
 description = "Computer-Use Interface (CUI) framework powering Cua"
 readme = "README.md"
 authors = [
@@ -26,15 +26,15 @@ lume = [
 lumier = [
 ]
 ui = [
-    "gradio>=5.23.3,<6.0.0",
-    "python-dotenv>=1.0.1,<2.0.0",
-    "datasets>=3.6.0,<4.0.0",
+    "gradio>=5.23.3",
+    "python-dotenv>=1.0.1",
+    "datasets>=3.6.0",
 ]
 all = [
     # Include all optional dependencies
-    "gradio>=5.23.3,<6.0.0",
-    "python-dotenv>=1.0.1,<2.0.0",
-    "datasets>=3.6.0,<4.0.0",
+    "gradio>=5.23.3",
+    "python-dotenv>=1.0.1",
+    "datasets>=3.6.0",
 ]
 
 [tool.pdm]

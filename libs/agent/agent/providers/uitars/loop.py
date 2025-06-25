@@ -25,9 +25,7 @@ from .prompts import COMPUTER_USE, SYSTEM_PROMPT, MAC_SPECIFIC_NOTES
 from .clients.oaicompat import OAICompatClient
 from .clients.mlxvlm import MLXVLMUITarsClient
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 class UITARSLoop(BaseLoop):
     """UI-TARS-specific implementation of the agent loop.

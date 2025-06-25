@@ -95,13 +95,13 @@ class EditTool(BaseEditTool, BaseAnthropicTool):
             result = await self.computer.interface.run_command(
                 f'[ -e "{str(path)}" ] && echo "exists" || echo "not exists"'
             )
-            exists = result[0].strip() == "exists"
+            exists = result.stdout.strip() == "exists"
 
             if exists:
                 result = await self.computer.interface.run_command(
                     f'[ -d "{str(path)}" ] && echo "dir" || echo "file"'
                 )
-                is_dir = result[0].strip() == "dir"
+                is_dir = result.stdout.strip() == "dir"
             else:
                 is_dir = False
 
@@ -126,7 +126,7 @@ class EditTool(BaseEditTool, BaseAnthropicTool):
             result = await self.computer.interface.run_command(
                 f'[ -d "{str(path)}" ] && echo "dir" || echo "file"'
             )
-            is_dir = result[0].strip() == "dir"
+            is_dir = result.stdout.strip() == "dir"
 
             if is_dir:
                 if view_range:
@@ -136,7 +136,7 @@ class EditTool(BaseEditTool, BaseAnthropicTool):
 
                 # List directory contents using ls
                 result = await self.computer.interface.run_command(f'ls -la "{str(path)}"')
-                contents = result[0]
+                contents = result.stdout
                 if contents:
                     stdout = f"Here's the files and directories in {path}:\n{contents}\n"
                 else:
@@ -272,9 +272,9 @@ class EditTool(BaseEditTool, BaseAnthropicTool):
         """Read the content of a file using cat command."""
         try:
             result = await self.computer.interface.run_command(f'cat "{str(path)}"')
-            if result[1]:  # If there's stderr output
-                raise ToolError(f"Error reading file: {result[1]}")
-            return result[0]
+            if result.stderr:  # If there's stderr output
+                raise ToolError(f"Error reading file: {result.stderr}")
+            return result.stdout
         except Exception as e:
             raise ToolError(f"Failed to read {path}: {str(e)}")
 
@@ -291,8 +291,8 @@ class EditTool(BaseEditTool, BaseAnthropicTool):
 {content}
 EOFCUA"""
             result = await self.computer.interface.run_command(cmd)
-            if result[1]:  # If there's stderr output
-                raise ToolError(f"Error writing file: {result[1]}")
+            if result.stderr:  # If there's stderr output
+                raise ToolError(f"Error writing file: {result.stderr}")
         except Exception as e:
             raise ToolError(f"Failed to write to {path}: {str(e)}")
 

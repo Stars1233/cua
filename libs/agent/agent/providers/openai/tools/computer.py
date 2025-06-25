@@ -61,9 +61,6 @@ class ComputerTool(BaseComputerTool, BaseOpenAITool):
     computer: Computer  # The CUA Computer instance
     logger = logging.getLogger(__name__)
 
-    _screenshot_delay = 1.0  # macOS is generally faster than X11
-    _scaling_enabled = True
-
     def __init__(self, computer: Computer):
         """Initialize the computer tool.
 
@@ -185,26 +182,23 @@ class ComputerTool(BaseComputerTool, BaseOpenAITool):
             raise ToolError(f"Failed to execute {type}: {str(e)}")
 
     async def handle_click(self, button: str, x: int, y: int) -> ToolResult:
-        """Handle different click actions."""
+        """Handle mouse clicks."""
         try:
-            # Perform requested click action
+            # Perform the click based on button type
             if button == "left":
                 await self.computer.interface.left_click(x, y)
             elif button == "right":
                 await self.computer.interface.right_click(x, y)
             elif button == "double":
                 await self.computer.interface.double_click(x, y)
+            else:
+                raise ToolError(f"Unsupported button type: {button}")
 
-            # Wait for UI to update
-            await asyncio.sleep(0.5)
-
-            # Take screenshot after action
-            screenshot = await self.computer.interface.screenshot()
-            base64_screenshot = base64.b64encode(screenshot).decode("utf-8")
+            # Wait briefly for UI to update
+            await asyncio.sleep(0.3)
 
             return ToolResult(
                 output=f"Performed {button} click at ({x}, {y})",
-                base64_image=base64_screenshot,
             )
         except Exception as e:
             self.logger.error(f"Error in handle_click: {str(e)}")
@@ -218,11 +212,7 @@ class ComputerTool(BaseComputerTool, BaseOpenAITool):
 
             await asyncio.sleep(0.3)
 
-            # Take screenshot after typing
-            screenshot = await self.computer.interface.screenshot()
-            base64_screenshot = base64.b64encode(screenshot).decode("utf-8")
-
-            return ToolResult(output=f"Typed: {text}", base64_image=base64_screenshot)
+            return ToolResult(output=f"Typed: {text}")
         except Exception as e:
             self.logger.error(f"Error in handle_typing: {str(e)}")
             raise ToolError(f"Failed to type '{text}': {str(e)}")
@@ -254,11 +244,7 @@ class ComputerTool(BaseComputerTool, BaseOpenAITool):
             # Wait briefly
             await asyncio.sleep(0.3)
 
-            # Take screenshot after action
-            screenshot = await self.computer.interface.screenshot()
-            base64_screenshot = base64.b64encode(screenshot).decode("utf-8")
-
-            return ToolResult(output=f"Pressed key: {key}", base64_image=base64_screenshot)
+            return ToolResult(output=f"Pressed key: {key}")
         except Exception as e:
             self.logger.error(f"Error in handle_key: {str(e)}")
             raise ToolError(f"Failed to press key '{key}': {str(e)}")
@@ -272,11 +258,7 @@ class ComputerTool(BaseComputerTool, BaseOpenAITool):
             # Wait briefly
             await asyncio.sleep(0.2)
 
-            # Take screenshot after action
-            screenshot = await self.computer.interface.screenshot()
-            base64_screenshot = base64.b64encode(screenshot).decode("utf-8")
-
-            return ToolResult(output=f"Moved cursor to ({x}, {y})", base64_image=base64_screenshot)
+            return ToolResult(output=f"Moved cursor to ({x}, {y})")
         except Exception as e:
             self.logger.error(f"Error in handle_mouse_move: {str(e)}")
             raise ToolError(f"Failed to move cursor to ({x}, {y}): {str(e)}")
@@ -296,14 +278,7 @@ class ComputerTool(BaseComputerTool, BaseOpenAITool):
             # Wait for UI to update
             await asyncio.sleep(0.5)
 
-            # Take screenshot after action
-            screenshot = await self.computer.interface.screenshot()
-            base64_screenshot = base64.b64encode(screenshot).decode("utf-8")
-
-            return ToolResult(
-                output=f"Scrolled at ({x}, {y}) with delta ({scroll_x}, {scroll_y})",
-                base64_image=base64_screenshot,
-            )
+            return ToolResult(output=f"Scrolled at ({x}, {y}) by ({scroll_x}, {scroll_y})")
         except Exception as e:
             self.logger.error(f"Error in handle_scroll: {str(e)}")
             raise ToolError(f"Failed to scroll at ({x}, {y}): {str(e)}")
@@ -331,13 +306,8 @@ class ComputerTool(BaseComputerTool, BaseOpenAITool):
             # Wait for UI to update
             await asyncio.sleep(0.5)
             
-            # Take screenshot after action
-            screenshot = await self.computer.interface.screenshot()
-            base64_screenshot = base64.b64encode(screenshot).decode("utf-8")
-            
             return ToolResult(
                 output=f"Dragged from ({path[0]['x']}, {path[0]['y']}) to ({path[-1]['x']}, {path[-1]['y']})",
-                base64_image=base64_screenshot,
             )
         except Exception as e:
             self.logger.error(f"Error in handle_drag: {str(e)}")

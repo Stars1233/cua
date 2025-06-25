@@ -11,9 +11,7 @@ from .types import AgentResponse
 from .factory import LoopFactory
 from .provider_config import DEFAULT_MODELS, ENV_VARS
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 class ComputerAgent:
     """A computer agent that can perform automated tasks using natural language instructions."""

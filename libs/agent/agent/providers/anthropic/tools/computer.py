@@ -205,26 +205,6 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
                 self.logger.info(f"  Coordinates: ({x}, {y})")
 
                 try:
-                    # Take pre-action screenshot to get current dimensions
-                    pre_screenshot = await self.computer.interface.screenshot()
-                    pre_img = Image.open(io.BytesIO(pre_screenshot))
-
-                    # Scale image to match screen dimensions if needed
-                    if pre_img.size != (self.width, self.height):
-                        self.logger.info(
-                            f"Scaling image from {pre_img.size} to {self.width}x{self.height} to match screen dimensions"
-                        )
-                        if not isinstance(self.width, int) or not isinstance(self.height, int):
-                            raise ToolError("Screen dimensions must be integers")
-                        size = (int(self.width), int(self.height))
-                        pre_img = pre_img.resize(size, Image.Resampling.LANCZOS)
-                        # Save the scaled image back to bytes
-                        buffer = io.BytesIO()
-                        pre_img.save(buffer, format="PNG")
-                        pre_screenshot = buffer.getvalue()
-
-                    self.logger.info(f"  Current dimensions: {pre_img.width}x{pre_img.height}")
-
                     # Perform the click action
                     if action == "left_click":
                         self.logger.info(f"Clicking at ({x}, {y})")
@@ -242,45 +222,14 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
                     # Wait briefly for any UI changes
                     await asyncio.sleep(0.5)
 
-                    # Take and save post-action screenshot
-                    post_screenshot = await self.computer.interface.screenshot()
-                    post_img = Image.open(io.BytesIO(post_screenshot))
-
-                    # Scale post-action image if needed
-                    if post_img.size != (self.width, self.height):
-                        self.logger.info(
-                            f"Scaling post-action image from {post_img.size} to {self.width}x{self.height}"
-                        )
-                        post_img = post_img.resize(
-                            (self.width, self.height), Image.Resampling.LANCZOS
-                        )
-                        buffer = io.BytesIO()
-                        post_img.save(buffer, format="PNG")
-                        post_screenshot = buffer.getvalue()
-
                     return ToolResult(
                         output=f"Performed {action} at ({x}, {y})",
-                        base64_image=base64.b64encode(post_screenshot).decode(),
                     )
                 except Exception as e:
                     self.logger.error(f"Error during {action} action: {str(e)}")
                     raise ToolError(f"Failed to perform {action}: {str(e)}")
             else:
                 try:
-                    # Take pre-action screenshot
-                    pre_screenshot = await self.computer.interface.screenshot()
-                    pre_img = Image.open(io.BytesIO(pre_screenshot))
-
-                    # Scale image if needed
-                    if pre_img.size != (self.width, self.height):
-                        self.logger.info(
-                            f"Scaling image from {pre_img.size} to {self.width}x{self.height}"
-                        )
-                        if not isinstance(self.width, int) or not isinstance(self.height, int):
-                            raise ToolError("Screen dimensions must be integers")
-                        size = (int(self.width), int(self.height))
-                        pre_img = pre_img.resize(size, Image.Resampling.LANCZOS)
-
                     # Perform the click action
                     if action == "left_click":
                         self.logger.info("Performing left click at current position")
@@ -295,25 +244,8 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
                     # Wait briefly for any UI changes
                     await asyncio.sleep(0.5)
 
-                    # Take post-action screenshot
-                    post_screenshot = await self.computer.interface.screenshot()
-                    post_img = Image.open(io.BytesIO(post_screenshot))
-
-                    # Scale post-action image if needed
-                    if post_img.size != (self.width, self.height):
-                        self.logger.info(
-                            f"Scaling post-action image from {post_img.size} to {self.width}x{self.height}"
-                        )
-                        post_img = post_img.resize(
-                            (self.width, self.height), Image.Resampling.LANCZOS
-                        )
-                        buffer = io.BytesIO()
-                        post_img.save(buffer, format="PNG")
-                        post_screenshot = buffer.getvalue()
-
                     return ToolResult(
                         output=f"Performed {action} at current position",
-                        base64_image=base64.b64encode(post_screenshot).decode(),
                     )
                 except Exception as e:
                     self.logger.error(f"Error during {action} action: {str(e)}")
@@ -328,20 +260,6 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
                 raise ToolError(f"{text} must be a string")
 
             try:
-                # Take pre-action screenshot
-                pre_screenshot = await self.computer.interface.screenshot()
-                pre_img = Image.open(io.BytesIO(pre_screenshot))
-
-                # Scale image if needed
-                if pre_img.size != (self.width, self.height):
-                    self.logger.info(
-                        f"Scaling image from {pre_img.size} to {self.width}x{self.height}"
-                    )
-                    if not isinstance(self.width, int) or not isinstance(self.height, int):
-                        raise ToolError("Screen dimensions must be integers")
-                    size = (int(self.width), int(self.height))
-                    pre_img = pre_img.resize(size, Image.Resampling.LANCZOS)
-
                 if action == "key":
                     # Special handling for page up/down on macOS
                     if text.lower() in ["pagedown", "page_down", "page down"]:
@@ -378,25 +296,8 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
                     # Wait briefly for UI changes
                     await asyncio.sleep(0.5)
 
-                    # Take post-action screenshot
-                    post_screenshot = await self.computer.interface.screenshot()
-                    post_img = Image.open(io.BytesIO(post_screenshot))
-
-                    # Scale post-action image if needed
-                    if post_img.size != (self.width, self.height):
-                        self.logger.info(
-                            f"Scaling post-action image from {post_img.size} to {self.width}x{self.height}"
-                        )
-                        post_img = post_img.resize(
-                            (self.width, self.height), Image.Resampling.LANCZOS
-                        )
-                        buffer = io.BytesIO()
-                        post_img.save(buffer, format="PNG")
-                        post_screenshot = buffer.getvalue()
-
                     return ToolResult(
                         output=f"Pressed key: {output_text}",
-                        base64_image=base64.b64encode(post_screenshot).decode(),
                     )
 
                 elif action == "type":
@@ -406,62 +307,9 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
                     # Wait briefly for UI changes
                     await asyncio.sleep(0.5)
 
-                    # Take post-action screenshot
-                    post_screenshot = await self.computer.interface.screenshot()
-                    post_img = Image.open(io.BytesIO(post_screenshot))
-
-                    # Scale post-action image if needed
-                    if post_img.size != (self.width, self.height):
-                        self.logger.info(
-                            f"Scaling post-action image from {post_img.size} to {self.width}x{self.height}"
-                        )
-                        post_img = post_img.resize(
-                            (self.width, self.height), Image.Resampling.LANCZOS
-                        )
-                        buffer = io.BytesIO()
-                        post_img.save(buffer, format="PNG")
-                        post_screenshot = buffer.getvalue()
-
                     return ToolResult(
                         output=f"Typed text: {text}",
-                        base64_image=base64.b64encode(post_screenshot).decode(),
                     )
-            except Exception as e:
-                self.logger.error(f"Error during {action} action: {str(e)}")
-                raise ToolError(f"Failed to perform {action}: {str(e)}")
-
-        elif action in ("screenshot", "cursor_position"):
-            if text is not None:
-                raise ToolError(f"text is not accepted for {action}")
-            if coordinate is not None:
-                raise ToolError(f"coordinate is not accepted for {action}")
-
-            try:
-                if action == "screenshot":
-                    # Take screenshot
-                    screenshot = await self.computer.interface.screenshot()
-                    img = Image.open(io.BytesIO(screenshot))
-
-                    # Scale image if needed
-                    if img.size != (self.width, self.height):
-                        self.logger.info(
-                            f"Scaling image from {img.size} to {self.width}x{self.height}"
-                        )
-                        if not isinstance(self.width, int) or not isinstance(self.height, int):
-                            raise ToolError("Screen dimensions must be integers")
-                        size = (int(self.width), int(self.height))
-                        img = img.resize(size, Image.Resampling.LANCZOS)
-                        buffer = io.BytesIO()
-                        img.save(buffer, format="PNG")
-                        screenshot = buffer.getvalue()
-
-                    return ToolResult(base64_image=base64.b64encode(screenshot).decode())
-
-                elif action == "cursor_position":
-                    pos = await self.computer.interface.get_cursor_position()
-                    x, y = pos  # Unpack the tuple
-                    return ToolResult(output=f"X={int(x)},Y={int(y)}")
-
             except Exception as e:
                 self.logger.error(f"Error during {action} action: {str(e)}")
                 raise ToolError(f"Failed to perform {action}: {str(e)}")
@@ -478,43 +326,29 @@ class ComputerTool(BaseComputerTool, BaseAnthropicTool):
                 if direction == "down":
                     # Scroll down (Page Down on macOS)
                     self.logger.info(f"Scrolling down, amount: {amount}")
-                    # Use fn+down for page down on macOS
-                    for _ in range(amount):
-                        await self.computer.interface.hotkey("fn", "down")
-                        await asyncio.sleep(0.1)
+                    await self.computer.interface.scroll_down(amount)
                 else:
                     # Scroll up (Page Up on macOS)
                     self.logger.info(f"Scrolling up, amount: {amount}")
-                    # Use fn+up for page up on macOS
-                    for _ in range(amount):
-                        await self.computer.interface.hotkey("fn", "up")
-                        await asyncio.sleep(0.1)
+                    await self.computer.interface.scroll_up(amount)
 
                 # Wait briefly for UI changes
                 await asyncio.sleep(0.5)
 
-                # Take post-action screenshot
-                post_screenshot = await self.computer.interface.screenshot()
-                post_img = Image.open(io.BytesIO(post_screenshot))
-
-                # Scale post-action image if needed
-                if post_img.size != (self.width, self.height):
-                    self.logger.info(
-                        f"Scaling post-action image from {post_img.size} to {self.width}x{self.height}"
-                    )
-                    post_img = post_img.resize((self.width, self.height), Image.Resampling.LANCZOS)
-                    buffer = io.BytesIO()
-                    post_img.save(buffer, format="PNG")
-                    post_screenshot = buffer.getvalue()
-
                 return ToolResult(
                     output=f"Scrolled {direction} by {amount} steps",
-                    base64_image=base64.b64encode(post_screenshot).decode(),
                 )
             except Exception as e:
                 self.logger.error(f"Error during scroll action: {str(e)}")
                 raise ToolError(f"Failed to perform scroll: {str(e)}")
 
+        elif action == "screenshot":
+            # Take screenshot
+            return await self.screenshot()
+        elif action == "cursor_position":
+            pos = await self.computer.interface.get_cursor_position()
+            x, y = pos  # Unpack the tuple
+            return ToolResult(output=f"X={int(x)},Y={int(y)}")
         raise ToolError(f"Invalid action: {action}")
 
     async def screenshot(self):
