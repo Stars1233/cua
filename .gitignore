@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+node_modules/*
+*/node_modules
+**/node_modules
+
 # Distribution / packaging
 .Python
 build/
@@ -155,7 +159,7 @@ weights/icon_detect/model.pt
 weights/icon_detect/model.pt.zip
 weights/icon_detect/model.pt.zip.part*
 
-libs/omniparser/weights/icon_detect/model.pt
+libs/python/omniparser/weights/icon_detect/model.pt
 
 # Example test data and output
 examples/test_data/

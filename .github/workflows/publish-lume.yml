@@ -3,17 +3,17 @@ name: Publish Notarized Lume
 on:
   push:
     tags:
-      - 'lume-v*'
+      - "lume-v*"
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to notarize (without v prefix)'
+        description: "Version to notarize (without v prefix)"
         required: true
-        default: '0.1.0'
+        default: "0.1.0"
   workflow_call:
     inputs:
       version:
-        description: 'Version to notarize'
+        description: "Version to notarize"
         required: true
         type: string
     secrets:
@@ -64,7 +64,7 @@ jobs:
 
       - name: Create .release directory
         run: mkdir -p .release
-        
+
       - name: Set version
         id: set_version
         run: |
@@ -82,11 +82,11 @@ jobs:
             echo "Error: No version found in tag or input"
             exit 1
           fi
-          
+
           # Update version in Main.swift
           echo "Updating version in Main.swift to $VERSION"
           sed -i '' "s/static let current: String = \".*\"/static let current: String = \"$VERSION\"/" libs/lume/src/Main.swift
-          
+
           # Set output for later steps
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
@@ -106,18 +106,34 @@ jobs:
           # Import certificates
           echo $APPLICATION_CERT_BASE64 | base64 --decode > application.p12
           echo $INSTALLER_CERT_BASE64 | base64 --decode > installer.p12
-          
+
           # Import certificates silently (minimize output)
           security import application.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/pkgbuild > /dev/null 2>&1
           security import installer.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/pkgbuild > /dev/null 2>&1
-          
+
           # Allow codesign to access the certificates (minimal output)
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain > /dev/null 2>&1
-          
-          # Verify certificates were imported but only show count, not details
-          echo "Verifying signing identity (showing count only)..."
-          security find-identity -v -p codesigning | grep -c "valid identities found" || true
-          
+
+          # Verify certificates were imported
+          echo "Verifying signing identities..."
+          CERT_COUNT=$(security find-identity -v -p codesigning build.keychain | grep -c "Developer ID Application" || echo "0")
+          INSTALLER_COUNT=$(security find-identity -v build.keychain | grep -c "Developer ID Installer" || echo "0")
+
+          if [ "$CERT_COUNT" -eq 0 ]; then
+            echo "Error: No Developer ID Application certificate found"
+            security find-identity -v -p codesigning build.keychain
+            exit 1
+          fi
+
+          if [ "$INSTALLER_COUNT" -eq 0 ]; then
+            echo "Error: No Developer ID Installer certificate found"  
+            security find-identity -v build.keychain
+            exit 1
+          fi
+
+          echo "Found $CERT_COUNT Developer ID Application certificate(s) and $INSTALLER_COUNT Developer ID Installer certificate(s)"
+          echo "All required certificates verified successfully"
+
           # Clean up certificate files
           rm application.p12 installer.p12
 
@@ -137,32 +153,32 @@ jobs:
           echo "Starting build process..."
           echo "Swift version: $(swift --version | head -n 1)"
           echo "Building version: $VERSION"
-          
+
           # Ensure .release directory exists
           mkdir -p .release
           chmod 755 .release
-          
+
           # Build the project first (redirect verbose output)
           echo "Building project..."
           swift build --configuration release > build.log 2>&1
           echo "Build completed."
-          
+
           # Run the notarization script with LOG_LEVEL env var
           chmod +x scripts/build/build-release-notarized.sh
           cd scripts/build
           LOG_LEVEL=minimal ./build-release-notarized.sh
-          
+
           # Return to the lume directory
           cd ../..
-          
+
           # Debug: List what files were actually created
           echo "Files in .release directory:"
           find .release -type f -name "*.tar.gz" -o -name "*.pkg.tar.gz"
-          
+
           # Get architecture for output filename
           ARCH=$(uname -m)
           OS_IDENTIFIER="darwin-${ARCH}"
-          
+
           # Output paths for later use
           echo "tarball_path=.release/lume-${VERSION}-${OS_IDENTIFIER}.tar.gz" >> $GITHUB_OUTPUT
           echo "pkg_path=.release/lume-${VERSION}-${OS_IDENTIFIER}.pkg.tar.gz" >> $GITHUB_OUTPUT
@@ -181,12 +197,12 @@ jobs:
             shasum -a 256 lume-*.tar.gz >> checksums.txt
             echo '```' >> checksums.txt
           fi
-          
+
           checksums=$(cat checksums.txt)
           echo "checksums<<EOF" >> $GITHUB_OUTPUT
           echo "$checksums" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-          
+
           # Debug: Show all files in the release directory
           echo "All files in release directory:"
           ls -la
@@ -197,15 +213,15 @@ jobs:
           VERSION=${{ steps.set_version.outputs.version }}
           ARCH=$(uname -m)
           OS_IDENTIFIER="darwin-${ARCH}"
-          
+
           # Create OS-tagged symlinks
           ln -sf "lume-${VERSION}-${OS_IDENTIFIER}.tar.gz" "lume-darwin.tar.gz"
           ln -sf "lume-${VERSION}-${OS_IDENTIFIER}.pkg.tar.gz" "lume-darwin.pkg.tar.gz"
-          
+
           # Create simple symlinks
           ln -sf "lume-${VERSION}-${OS_IDENTIFIER}.tar.gz" "lume.tar.gz"
           ln -sf "lume-${VERSION}-${OS_IDENTIFIER}.pkg.tar.gz" "lume.pkg.tar.gz"
-          
+
           # List all files (including symlinks)
           echo "Files with symlinks in release directory:"
           ls -la
@@ -237,10 +253,10 @@ jobs:
             ./libs/lume/.release/lume.pkg.tar.gz
           body: |
             ${{ steps.generate_checksums.outputs.checksums }}
-            
+
             ### Installation with script
 
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/lume/scripts/install.sh)"
             ```
           generate_release_notes: true
-          make_latest: true 
+          make_latest: true

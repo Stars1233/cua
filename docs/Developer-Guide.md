@@ -4,13 +4,20 @@
 
 The project is organized as a monorepo with these main packages:
 
-- `libs/core/` - Base package with telemetry support
-- `libs/computer/` - Computer-use interface (CUI) library
-- `libs/agent/` - AI agent library with multi-provider support
-- `libs/som/` - Set-of-Mark parser
-- `libs/computer-server/` - Server component for VM
+### Python
+- `libs/python/core/` - Base package with telemetry support
+- `libs/python/computer/` - Computer-use interface (CUI) library
+- `libs/python/agent/` - AI agent library with multi-provider support
+- `libs/python/som/` - Set-of-Mark parser
+- `libs/python/computer-server/` - Server component for VM
+- `libs/python/pylume/` - Python bindings for Lume
+
+### TypeScript
+- `libs/typescript/computer/` - Computer-use interface (CUI) library
+- `libs/typescript/agent/` - AI agent library with multi-provider support
+
+### Other
 - `libs/lume/` - Lume CLI
-- `libs/pylume/` - Python bindings for Lume
 
 Each package has its own virtual environment and dependencies, managed through PDM.
 

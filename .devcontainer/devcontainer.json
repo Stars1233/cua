@@ -1,0 +1,18 @@
+{
+	"name": "C/ua - OSS",
+	"build": {
+		"dockerfile": "../Dockerfile"
+	},
+	"containerEnv": {
+		"DISPLAY": "",
+		"PYLUME_HOST": "host.docker.internal"
+	},
+	"forwardPorts": [7860],
+	"portsAttributes": {
+		"7860": {
+			"label": "C/ua web client (Gradio)",
+			"onAutoForward": "silent"
+		}
+	},
+	"postCreateCommand": "/bin/bash .devcontainer/post-install.sh"
+}

@@ -87,25 +87,25 @@ install_package() {
 print_step "Installing packages in development mode..."
 
 # Install core first (base package with telemetry support)
-install_package "libs/core" "core"
+install_package "libs/python/core" "core"
 
 # Install pylume (base dependency)
-install_package "libs/pylume" "pylume"
+install_package "libs/python/pylume" "pylume"
 
-# Install computer (depends on pylume)
-install_package "libs/computer" "computer"
+# Install computer with all its dependencies and extras
+install_package "libs/python/computer" "computer" "all"
 
 # Install omniparser
-install_package "libs/som" "som"
+install_package "libs/python/som" "som"
 
 # Install agent with all its dependencies and extras
-install_package "libs/agent" "agent" "all"
+install_package "libs/python/agent" "agent" "all"
 
 # Install computer-server
-install_package "libs/computer-server" "computer-server"
+install_package "libs/python/computer-server" "computer-server"
 
 # Install mcp-server
-install_package "libs/mcp-server" "mcp-server"
+install_package "libs/python/mcp-server" "mcp-server"
 
 # Install development tools from root project
 print_step "Installing development dependencies..."
@@ -113,7 +113,7 @@ pip install -e ".[dev,test,docs]"
 
 # Create a .env file for VS Code to use the virtual environment
 print_step "Creating .env file for VS Code..."
-echo "PYTHONPATH=${PROJECT_ROOT}/libs/core:${PROJECT_ROOT}/libs/computer:${PROJECT_ROOT}/libs/agent:${PROJECT_ROOT}/libs/som:${PROJECT_ROOT}/libs/pylume:${PROJECT_ROOT}/libs/computer-server:${PROJECT_ROOT}/libs/mcp-server" > .env
+echo "PYTHONPATH=${PROJECT_ROOT}/libs/python/core:${PROJECT_ROOT}/libs/python/computer:${PROJECT_ROOT}/libs/python/agent:${PROJECT_ROOT}/libs/python/som:${PROJECT_ROOT}/libs/python/pylume:${PROJECT_ROOT}/libs/python/computer-server:${PROJECT_ROOT}/libs/python/mcp-server" > .env
 
 print_success "All packages installed successfully!"
 print_step "Your virtual environment is ready. To activate it:"

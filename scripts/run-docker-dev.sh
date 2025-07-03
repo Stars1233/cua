@@ -24,8 +24,26 @@ IMAGE_NAME="cua-dev-image"
 CONTAINER_NAME="cua-dev-container"
 PLATFORM="linux/arm64"
 
+# Detect platform based on architecture
+arch=$(uname -m)
+
+if [[ $arch == x86_64* ]]; then
+    PLATFORM="linux/amd64"
+    print_info "X64 Architecture detected, using platform: ${PLATFORM}"
+elif [[ $arch == i*86 ]]; then
+    PLATFORM="linux/386"
+    print_info "X32 Architecture detected, using platform: ${PLATFORM}"
+elif [[ $arch == arm* ]] || [[ $arch == aarch64 ]]; then
+    PLATFORM="linux/arm64"
+    print_info "ARM Architecture detected, using platform: ${PLATFORM}"
+else
+    # Fallback to amd64 for unknown architectures
+    PLATFORM="linux/amd64"
+    print_info "Unknown architecture ($arch), defaulting to platform: ${PLATFORM}"
+fi
+
 # Environment variables
-PYTHONPATH="/app/libs/core:/app/libs/computer:/app/libs/agent:/app/libs/som:/app/libs/pylume:/app/libs/computer-server"
+PYTHONPATH="/app/libs/python/core:/app/libs/python/computer:/app/libs/python/agent:/app/libs/python/som:/app/libs/python/pylume:/app/libs/python/computer-server:/app/libs/python/mcp-server"
 
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then
@@ -56,6 +74,7 @@ case "$1" in
                 -e PYTHONPATH=${PYTHONPATH} \
                 -e DISPLAY=${DISPLAY:-:0} \
                 -e PYLUME_HOST="host.docker.internal" \
+                -p 7860:7860 \
                 ${IMAGE_NAME} bash
         else
             # Run the specified example
@@ -73,6 +92,7 @@ case "$1" in
                 -e PYTHONPATH=${PYTHONPATH} \
                 -e DISPLAY=${DISPLAY:-:0} \
                 -e PYLUME_HOST="host.docker.internal" \
+                -p 7860:7860 \
                 ${IMAGE_NAME} python "/app/examples/$2"
         fi
         ;;

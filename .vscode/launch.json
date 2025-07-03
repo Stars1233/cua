@@ -1,6 +1,32 @@
 {
     "configurations": [
         {
+            "name": "Agent UI",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "examples/agent_ui_examples.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "python": "${workspaceFolder:cua-root}/.venv/bin/python",
+            "cwd": "${workspaceFolder:cua-root}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/python/core:${workspaceFolder:cua-root}/libs/python/computer:${workspaceFolder:cua-root}/libs/python/agent:${workspaceFolder:cua-root}/libs/python/som:${workspaceFolder:cua-root}/libs/python/pylume"
+            }
+        },
+        {
+            "name": "Computer UI",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "examples/computer_ui_examples.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "python": "${workspaceFolder:cua-root}/.venv/bin/python",
+            "cwd": "${workspaceFolder:cua-root}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/python/core:${workspaceFolder:cua-root}/libs/python/computer:${workspaceFolder:cua-root}/libs/python/agent:${workspaceFolder:cua-root}/libs/python/som:${workspaceFolder:cua-root}/libs/python/pylume"
+            }
+        },
+        {
             "name": "Run Computer Examples",
             "type": "debugpy",
             "request": "launch",
@@ -10,7 +36,7 @@
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",
             "cwd": "${workspaceFolder:cua-root}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/python/core:${workspaceFolder:cua-root}/libs/python/computer:${workspaceFolder:cua-root}/libs/python/agent:${workspaceFolder:cua-root}/libs/python/som:${workspaceFolder:cua-root}/libs/python/pylume"
             }
         },
         {
@@ -23,20 +49,7 @@
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",
             "cwd": "${workspaceFolder:cua-root}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
-            }
-        },
-        {
-            "name": "Run Agent UI Examples",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "examples/agent_ui_examples.py",
-            "console": "integratedTerminal",
-            "justMyCode": false,
-            "python": "${workspaceFolder:cua-root}/.venv/bin/python",
-            "cwd": "${workspaceFolder:cua-root}",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/python/core:${workspaceFolder:cua-root}/libs/python/computer:${workspaceFolder:cua-root}/libs/python/agent:${workspaceFolder:cua-root}/libs/python/som:${workspaceFolder:cua-root}/libs/python/pylume"
             }
         },
         {
@@ -49,7 +62,7 @@
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",
             "cwd": "${workspaceFolder:cua-root}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/python/core:${workspaceFolder:cua-root}/libs/python/computer:${workspaceFolder:cua-root}/libs/python/agent:${workspaceFolder:cua-root}/libs/python/som:${workspaceFolder:cua-root}/libs/python/pylume"
             }
         },
         {
@@ -71,7 +84,7 @@
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",
             "cwd": "${workspaceFolder:cua-root}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/python/core:${workspaceFolder:cua-root}/libs/python/computer:${workspaceFolder:cua-root}/libs/python/agent:${workspaceFolder:cua-root}/libs/python/som:${workspaceFolder:cua-root}/libs/python/pylume"
             }
         },
         {
@@ -93,27 +106,27 @@
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",
             "cwd": "${workspaceFolder:cua-root}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/python/core:${workspaceFolder:cua-root}/libs/python/computer:${workspaceFolder:cua-root}/libs/python/agent:${workspaceFolder:cua-root}/libs/python/som:${workspaceFolder:cua-root}/libs/python/pylume"
             }
         },
         {
             "name": "Run Computer Server",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/libs/computer-server/run_server.py",
+            "program": "${workspaceFolder}/libs/python/computer-server/run_server.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",
             "cwd": "${workspaceFolder:cua-root}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer:${workspaceFolder:cua-root}/libs/agent:${workspaceFolder:cua-root}/libs/som:${workspaceFolder:cua-root}/libs/pylume"
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/python/core:${workspaceFolder:cua-root}/libs/python/computer:${workspaceFolder:cua-root}/libs/python/agent:${workspaceFolder:cua-root}/libs/python/som:${workspaceFolder:cua-root}/libs/python/pylume"
             }
         },
         {
             "name": "Run Computer Server with Args",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/libs/computer-server/run_server.py",
+            "program": "${workspaceFolder}/libs/python/computer-server/run_server.py",
             "args": [
                 "--host",
                 "0.0.0.0",
@@ -127,7 +140,7 @@
             "python": "${workspaceFolder:cua-root}/.venv/bin/python",
             "cwd": "${workspaceFolder:cua-root}",
             "env": {
-                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/core:${workspaceFolder:cua-root}/libs/computer-server"
+                "PYTHONPATH": "${workspaceFolder:cua-root}/libs/python/core:${workspaceFolder:cua-root}/libs/python/computer-server"
             }
         },
         {
