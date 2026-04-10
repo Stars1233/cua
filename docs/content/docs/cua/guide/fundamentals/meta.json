@@ -2,6 +2,6 @@
   "title": "Agent",
   "description": "Core concepts for building agents with Cua",
   "icon": "Lightbulb",
-  "defaultOpen": true,
+  "defaultOpen": false,
   "pages": ["agent-loops", "vlms", "cua-vlm-router", "browser-tool", "callbacks"]
 }
