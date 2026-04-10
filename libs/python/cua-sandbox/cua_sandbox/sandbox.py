@@ -27,6 +27,7 @@ Usage::
 
 from __future__ import annotations
 
+import logging
 import random
 import time
 from contextlib import asynccontextmanager
@@ -74,6 +75,8 @@ from cua_sandbox.transport.websocket import WebSocketTransport
 
 if TYPE_CHECKING:
     from cua_sandbox.runtime.base import Runtime, RuntimeInfo
+
+logger = logging.getLogger(__name__)
 
 _T = TypeVar("_T")
 
@@ -310,9 +313,7 @@ class Sandbox:
     async def destroy(self) -> None:
         """Disconnect and permanently delete the sandbox (VM/container)."""
         if self._has_snapshots:
-            import logging
-
-            logging.getLogger(__name__).warning(
+            logger.warning(
                 "Destroying sandbox %s which has snapshots — "
                 "forks referencing those snapshots will break. "
                 "Use Sandbox.ephemeral() which auto-stops instead of deleting "
@@ -321,15 +322,26 @@ class Sandbox:
             )
         if self.telemetry_enabled and _TELEMETRY_AVAILABLE and is_telemetry_enabled():
             record_event("sandbox_destroy", {"name": self.name, "ephemeral": self._ephemeral})
-        await self._transport.disconnect()
+        # Run each cleanup step independently so a failure in one
+        # (e.g. disconnect timeout) doesn't prevent the VM from being deleted.
+        try:
+            await self._transport.disconnect()
+        except Exception:
+            logger.warning("Failed to disconnect transport for sandbox %r", self.name)
         if isinstance(self._transport, CloudTransport):
-            await self._transport.delete_vm()
+            try:
+                await self._transport.delete_vm()
+            except Exception:
+                logger.warning("Failed to delete cloud VM %r", self.name)
         if self._runtime and self._runtime_info:
             vm_name = self._runtime_info.name or self.name or "cua-sandbox"
-            if self._ephemeral and hasattr(self._runtime, "delete"):
-                await self._runtime.delete(vm_name)
-            else:
-                await self._runtime.stop(vm_name)
+            try:
+                if self._ephemeral and hasattr(self._runtime, "delete"):
+                    await self._runtime.delete(vm_name)
+                else:
+                    await self._runtime.stop(vm_name)
+            except Exception:
+                logger.warning("Failed to stop/delete runtime for sandbox %r", self.name)
 
     async def screenshot(
         self, text: Optional[str] = None, format: str = "png", quality: int = 95
@@ -1018,7 +1030,23 @@ class Sandbox:
                 sb = cls(
                     transport, name=name, _ephemeral=ephemeral, _telemetry_enabled=telemetry_enabled
                 )
-                await sb._connect()
+                try:
+                    await sb._connect()
+                except BaseException:
+                    # _connect() calls CloudTransport.connect() which may have
+                    # already created a VM before failing (e.g. timeout while
+                    # polling for "running" status).  Delete the orphan so it
+                    # doesn't leak.
+                    vm_name = transport._name
+                    if vm_name:
+                        try:
+                            await transport.delete_vm()
+                        except Exception:
+                            logger.warning(
+                                "Failed to clean up cloud VM %r after connect failure",
+                                vm_name,
+                            )
+                    raise
                 _record_sandbox_create(
                     sb, image=image, local=False, ephemeral=bool(ephemeral), t_start=_t_start
                 )
