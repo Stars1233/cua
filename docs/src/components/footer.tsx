@@ -127,6 +127,9 @@ export function Footer() {
               <a href="https://cua.ai/blog" className={linkClass}>
                 Blog
               </a>
+              <a href="https://status.cua.ai" className={linkClass}>
+                Status
+              </a>
             </div>
 
             {/* Company Column */}
