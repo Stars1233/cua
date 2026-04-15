@@ -226,7 +226,7 @@ def _shutdown_otel() -> None:
 def _get_sdk_version() -> str:
     """Get the CUA SDK version."""
     try:
-        from core import __version__
+        from cua_core import __version__
 
         return __version__
     except ImportError:

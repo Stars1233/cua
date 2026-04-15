@@ -358,7 +358,7 @@ Examples:
 
     # Import here to avoid import errors if dependencies are missing
     try:
-        from agent import ComputerAgent
+        from cua_agent import ComputerAgent
         from computer import Computer
     except ImportError as e:
         print_colored(f"❌ Import error: {e}", Colors.RED, bold=True)

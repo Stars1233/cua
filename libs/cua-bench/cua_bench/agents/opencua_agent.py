@@ -143,7 +143,7 @@ class OpenCUAAgent(BaseAgent):
     ) -> AgentResult:
         """Run the task using the OpenCUA model via the CUA Computer Agent SDK."""
         try:
-            from agent import ComputerAgent
+            from cua_agent import ComputerAgent
         except ImportError as e:
             raise RuntimeError(
                 "opencua-agent requires the `cua-agent` package to be installed. "

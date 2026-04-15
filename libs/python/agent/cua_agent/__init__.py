@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # Initialize telemetry when the package is imported
 try:
     # Import from core telemetry for basic functions
-    from core.telemetry import (
+    from cua_core.telemetry import (
         is_telemetry_enabled,
         record_event,
     )

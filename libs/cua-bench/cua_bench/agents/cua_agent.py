@@ -202,7 +202,7 @@ class CuaAgent(BaseAgent):
             AgentResult with token counts and failure mode
         """
         try:
-            from agent import ComputerAgent
+            from cua_agent import ComputerAgent
         except ImportError as e:
             raise RuntimeError(
                 "cua-agent requires the `cua-agent` package to be installed. "

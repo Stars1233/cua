@@ -126,7 +126,7 @@ def _create_gemini_client(
         http_options: Dict[str, Any] = {"base_url": f"{cua_base_url}/gemini"}
         # Include CUA version headers if available
         try:
-            from core.http import cua_version_headers
+            from cua_core.http import cua_version_headers
 
             hdrs = cua_version_headers()
             if hdrs:

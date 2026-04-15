@@ -92,10 +92,10 @@ _INTERFACE_NAMES: dict[str, tuple[str, str]] = {
 }
 
 _AGENT_NAMES: dict[str, tuple[str, str]] = {
-    "ComputerAgent": ("agent", "ComputerAgent"),
-    "AgentResponse": ("agent", "AgentResponse"),
-    "Messages": ("agent", "Messages"),
-    "register_agent": ("agent", "register_agent"),
+    "ComputerAgent": ("cua_agent", "ComputerAgent"),
+    "AgentResponse": ("cua_agent", "AgentResponse"),
+    "Messages": ("cua_agent", "Messages"),
+    "register_agent": ("cua_agent", "register_agent"),
 }
 
 _LAZY: dict[str, tuple[str, str]] = {**_RUNTIME_NAMES, **_INTERFACE_NAMES, **_AGENT_NAMES}

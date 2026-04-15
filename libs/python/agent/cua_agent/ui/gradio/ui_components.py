@@ -149,7 +149,7 @@ try:
     from computer import Computer
 except ImportError:
     Computer = None  # type: ignore[assignment,misc]
-from agent import ComputerAgent
+from cua_agent import ComputerAgent
 
 async def main():
     async with Computer{computer_args_str} as computer:

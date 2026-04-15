@@ -84,7 +84,7 @@ class PlaygroundServer:
             """
             # Import here to avoid circular imports
             try:
-                from agent import ComputerAgent
+                from cua_agent import ComputerAgent
             except ImportError:
                 raise HTTPException(status_code=501, detail="ComputerAgent not available")
 

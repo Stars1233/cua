@@ -6,7 +6,7 @@ instructions message to the start of the conversation before each LLM call.
 
 Usage:
 
-    from agent.callbacks import PromptInstructionsCallback
+    from cua_agent.callbacks import PromptInstructionsCallback
     agent = ComputerAgent(
         model="openai/computer-use-preview",
         callbacks=[PromptInstructionsCallback("Follow these rules...")]
