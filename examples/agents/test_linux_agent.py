@@ -19,7 +19,7 @@ import os
 import subprocess
 
 import pytest
-from agent import ComputerAgent
+from cua_agent import ComputerAgent
 from cua_sandbox import Image, Sandbox
 
 pytestmark = pytest.mark.asyncio

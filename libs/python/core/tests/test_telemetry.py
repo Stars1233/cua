@@ -21,7 +21,7 @@ class TestTelemetryEnabled:
         monkeypatch.delenv("CUA_TELEMETRY_ENABLED", raising=False)
         monkeypatch.delenv("CUA_TELEMETRY_DISABLED", raising=False)
 
-        from core.telemetry import is_telemetry_enabled
+        from cua_core.telemetry import is_telemetry_enabled
 
         assert is_telemetry_enabled() is True
 
@@ -29,7 +29,7 @@ class TestTelemetryEnabled:
         """Test that telemetry can be disabled with CUA_TELEMETRY_ENABLED=false."""
         monkeypatch.setenv("CUA_TELEMETRY_ENABLED", "false")
 
-        from core.telemetry import is_telemetry_enabled
+        from cua_core.telemetry import is_telemetry_enabled
 
         assert is_telemetry_enabled() is False
 
@@ -38,7 +38,7 @@ class TestTelemetryEnabled:
         """Test that telemetry respects various disable values."""
         monkeypatch.setenv("CUA_TELEMETRY_ENABLED", value)
 
-        from core.telemetry import is_telemetry_enabled
+        from cua_core.telemetry import is_telemetry_enabled
 
         assert is_telemetry_enabled() is False
 
@@ -48,7 +48,7 @@ class TestTelemetryEnabled:
         monkeypatch.delenv("CUA_TELEMETRY_DISABLED", raising=False)
         monkeypatch.setenv("CUA_TELEMETRY_ENABLED", value)
 
-        from core.telemetry import is_telemetry_enabled
+        from cua_core.telemetry import is_telemetry_enabled
 
         assert is_telemetry_enabled() is True
 
@@ -60,7 +60,7 @@ class TestPostHogTelemetryClient:
     @patch("core.telemetry.posthog.Path")
     def test_client_initialization(self, mock_path, mock_posthog, disable_telemetry):
         """Test that client initializes correctly."""
-        from core.telemetry.posthog import PostHogTelemetryClient
+        from cua_core.telemetry.posthog import PostHogTelemetryClient
 
         # Mock the storage directory
         mock_storage_dir = MagicMock()
@@ -82,7 +82,7 @@ class TestPostHogTelemetryClient:
     @patch("core.telemetry.posthog.Path")
     def test_installation_id_generation(self, mock_path, mock_posthog, disable_telemetry):
         """Test that installation ID is generated if not exists."""
-        from core.telemetry.posthog import PostHogTelemetryClient
+        from cua_core.telemetry.posthog import PostHogTelemetryClient
 
         # Mock file system: Path.home() / ".config" / "cua" / "installation_id"
         mock_id_file = MagicMock()
@@ -106,7 +106,7 @@ class TestPostHogTelemetryClient:
     @patch("core.telemetry.posthog.Path")
     def test_installation_id_persistence(self, mock_path, mock_posthog, disable_telemetry):
         """Test that installation ID is read from file if exists."""
-        from core.telemetry.posthog import PostHogTelemetryClient
+        from cua_core.telemetry.posthog import PostHogTelemetryClient
 
         existing_id = "test-installation-id-123"
 
@@ -131,7 +131,7 @@ class TestPostHogTelemetryClient:
     @patch("core.telemetry.posthog.Path")
     def test_record_event_when_disabled(self, mock_path, mock_posthog, monkeypatch):
         """Test that events are not recorded when telemetry is disabled."""
-        from core.telemetry.posthog import PostHogTelemetryClient
+        from cua_core.telemetry.posthog import PostHogTelemetryClient
 
         # Disable telemetry explicitly using the correct environment variable
         monkeypatch.setenv("CUA_TELEMETRY_ENABLED", "false")
@@ -155,7 +155,7 @@ class TestPostHogTelemetryClient:
     @patch("core.telemetry.posthog.Path")
     def test_record_event_when_enabled(self, mock_path, mock_posthog, monkeypatch):
         """Test that events are recorded when telemetry is enabled."""
-        from core.telemetry.posthog import PostHogTelemetryClient
+        from cua_core.telemetry.posthog import PostHogTelemetryClient
 
         # Enable telemetry
         monkeypatch.delenv("CUA_TELEMETRY_DISABLED", raising=False)
@@ -184,7 +184,7 @@ class TestPostHogTelemetryClient:
     @patch("core.telemetry.posthog.Path")
     def test_singleton_pattern(self, mock_path, mock_posthog, disable_telemetry):
         """Test that get_client returns the same instance."""
-        from core.telemetry.posthog import PostHogTelemetryClient
+        from cua_core.telemetry.posthog import PostHogTelemetryClient
 
         # Mock file system
         mock_storage_dir = MagicMock()
@@ -207,7 +207,7 @@ class TestRecordEvent:
     @patch("core.telemetry.posthog.PostHogTelemetryClient")
     def test_record_event_calls_client(self, mock_client_class, disable_telemetry):
         """Test that record_event delegates to the client."""
-        from core.telemetry import record_event
+        from cua_core.telemetry import record_event
 
         mock_client_instance = Mock()
         mock_client_class.get_client.return_value = mock_client_instance
@@ -222,7 +222,7 @@ class TestRecordEvent:
     @patch("core.telemetry.posthog.PostHogTelemetryClient")
     def test_record_event_without_properties(self, mock_client_class, disable_telemetry):
         """Test that record_event works without properties."""
-        from core.telemetry import record_event
+        from cua_core.telemetry import record_event
 
         mock_client_instance = Mock()
         mock_client_class.get_client.return_value = mock_client_instance
@@ -240,7 +240,7 @@ class TestDestroyTelemetryClient:
     @patch("core.telemetry.posthog.PostHogTelemetryClient")
     def test_destroy_client_calls_class_method(self, mock_client_class):
         """Test that destroy_telemetry_client delegates correctly."""
-        from core.telemetry import destroy_telemetry_client
+        from cua_core.telemetry import destroy_telemetry_client
 
         destroy_telemetry_client()
 

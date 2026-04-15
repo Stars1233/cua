@@ -24,7 +24,7 @@ from typing import (
 
 import litellm
 import litellm.utils
-from core.telemetry import is_telemetry_enabled, record_event
+from cua_core.telemetry import is_telemetry_enabled, record_event
 from litellm.responses.utils import Usage
 
 from .adapters import (

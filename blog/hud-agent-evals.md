@@ -34,7 +34,7 @@ export OPENAI_API_KEY="your_openai_key"       # For OpenAI models
 ### Quick Start - Single Task
 
 ```python
-from agent.integrations.hud import run_single_task
+from cua_agent.integrations.hud import run_single_task
 
 await run_single_task(
     dataset="hud-evals/OSWorld-Verified-XLang",
@@ -46,7 +46,7 @@ await run_single_task(
 ### Run a dataset (parallel execution)
 
 ```python
-from agent.integrations.hud import run_full_dataset
+from cua_agent.integrations.hud import run_full_dataset
 
 # Test on OSWorld (367 computer-use tasks)
 await run_full_dataset(

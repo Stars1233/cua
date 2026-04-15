@@ -29,7 +29,7 @@ agent = ComputerAgent(model="cua/microsoft/fara-7b", tools=[computer])
 To silence the warning, pass the correct tool explicitly:
 
 ```python
-from agent.tools.browser_tool import BrowserTool
+from cua_agent.tools.browser_tool import BrowserTool
 
 browser_tool = BrowserTool(interface=computer.interface)
 agent = ComputerAgent(model="cua/microsoft/fara-7b", tools=[browser_tool])

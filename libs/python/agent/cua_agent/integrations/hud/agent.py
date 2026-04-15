@@ -20,11 +20,11 @@ from typing import Any, ClassVar, Optional
 
 import hud
 import mcp.types as types
-from agent.agent import ComputerAgent as BaseComputerAgent
-from agent.callbacks import PromptInstructionsCallback
-from agent.callbacks.trajectory_saver import TrajectorySaverCallback
-from agent.computers import is_agent_computer
-from agent.responses import make_failed_tool_call_items
+from cua_agent.agent import ComputerAgent as BaseComputerAgent
+from cua_agent.callbacks import PromptInstructionsCallback
+from cua_agent.callbacks.trajectory_saver import TrajectorySaverCallback
+from cua_agent.computers import is_agent_computer
+from cua_agent.responses import make_failed_tool_call_items
 from hud.agents import MCPAgent
 from hud.tools.computer.settings import computer_settings
 from hud.types import AgentResponse, MCPToolCall, MCPToolResult, Trace

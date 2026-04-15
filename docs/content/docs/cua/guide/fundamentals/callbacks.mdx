@@ -169,7 +169,7 @@ This is a simple way to guide agent behavior without modifying agent loops.
 Callbacks can implement these hooks (all are optional):
 
 ```python
-from agent.callbacks.base import AsyncCallbackHandler
+from cua_agent.callbacks.base import AsyncCallbackHandler
 
 class MyCallback(AsyncCallbackHandler):
     async def on_run_start(self, kwargs, old_items):
@@ -214,7 +214,7 @@ class MyCallback(AsyncCallbackHandler):
 Build your own callback by extending `AsyncCallbackHandler`:
 
 ```python
-from agent.callbacks.base import AsyncCallbackHandler
+from cua_agent.callbacks.base import AsyncCallbackHandler
 
 class ActionCounterCallback(AsyncCallbackHandler):
     def __init__(self):

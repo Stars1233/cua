@@ -5,7 +5,7 @@ Usage::
     from cua.callbacks import LoggingCallback, BudgetManagerCallback
 """
 
-from agent.callbacks import (
+from cua_agent.callbacks import (
     AsyncCallbackHandler,
     BudgetManagerCallback,
     ImageRetentionCallback,

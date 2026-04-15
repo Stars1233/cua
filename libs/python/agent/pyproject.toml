@@ -19,7 +19,7 @@ dependencies = [
     "pydantic>=2.6.4",
     "rich>=13.7.1",
     "python-dotenv>=1.0.1",
-    "cua-core>=0.1.18,<0.2.0",
+    "cua-core>=0.3.0,<0.4.0",
     "certifi>=2024.2.2",
     "litellm==1.80.0",
     "Pillow>=10.0.0"
@@ -130,4 +130,4 @@ constraint-dependencies = ["fastrtc>0.43.0", "mlx-audio>0.2.3"]
 distribution = true
 
 [tool.pdm.build]
-includes = ["agent/"]
+includes = ["cua_agent/"]

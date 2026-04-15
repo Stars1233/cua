@@ -33,7 +33,7 @@ telemetry = [
 distribution = true
 
 [tool.pdm.build]
-includes = ["core/"]
+includes = ["cua_core/"]
 source-includes = ["tests/", "README.md", "LICENSE"]
 
 [tool.pytest.ini_options]

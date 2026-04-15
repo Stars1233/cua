@@ -11,7 +11,7 @@ from cua_cli.commands import workspace as workspace_cmd
 from cua_cli.utils.output import print_error
 
 try:
-    from core.telemetry import is_telemetry_enabled, record_event
+    from cua_core.telemetry import is_telemetry_enabled, record_event
 
     _TELEMETRY_AVAILABLE = True
 except ImportError:

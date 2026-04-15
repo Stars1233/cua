@@ -5,7 +5,7 @@ Usage::
     from cua.tools import BrowserTool, BaseTool, register_tool
 """
 
-from agent.tools import (
+from cua_agent.tools import (
     TOOL_REGISTRY,
     BaseComputerTool,
     BaseTool,
@@ -14,7 +14,7 @@ from agent.tools import (
     get_tool,
     register_tool,
 )
-from agent.types import IllegalArgumentError, ToolError
+from cua_agent.types import IllegalArgumentError, ToolError
 
 __all__ = [
     "BaseTool",

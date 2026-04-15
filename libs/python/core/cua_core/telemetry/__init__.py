@@ -5,7 +5,7 @@ and operational metrics via OpenTelemetry.
 """
 
 # OpenTelemetry instrumentation for Four Golden Signals
-from core.telemetry.otel import (
+from cua_core.telemetry.otel import (
     create_span,
     instrument_async,
     instrument_sync,
@@ -15,7 +15,7 @@ from core.telemetry.otel import (
     record_tokens,
     track_concurrent,
 )
-from core.telemetry.posthog import (
+from cua_core.telemetry.posthog import (
     destroy_telemetry_client,
     is_telemetry_enabled,
     record_event,

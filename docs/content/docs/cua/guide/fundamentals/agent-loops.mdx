@@ -124,7 +124,7 @@ async for result in agent.run(messages, stream=True):
 The agent respects the `max_trajectory_budget` you set. When the budget is exceeded, the agent raises an exception:
 
 ```python
-from agent.exceptions import BudgetExceededException
+from cua_agent.exceptions import BudgetExceededException
 
 agent = ComputerAgent(
     model="anthropic/claude-sonnet-4-5-20250929",

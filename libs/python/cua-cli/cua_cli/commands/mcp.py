@@ -413,7 +413,7 @@ async def _register_computer_tools(
         server_url = await _get_server_url(sandbox_name)
         api_key = get_api_key()
 
-        from core.http import cua_version_headers
+        from cua_core.http import cua_version_headers
 
         headers = {
             "Content-Type": "application/json",

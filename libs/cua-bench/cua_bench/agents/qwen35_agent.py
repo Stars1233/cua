@@ -143,7 +143,7 @@ class Qwen35Agent(BaseAgent):
     ) -> AgentResult:
         """Run the task using the Qwen3.5 model via the CUA Computer Agent SDK."""
         try:
-            from agent import ComputerAgent
+            from cua_agent import ComputerAgent
         except ImportError as e:
             raise RuntimeError(
                 "qwen35-agent requires the `cua-agent` package to be installed. "

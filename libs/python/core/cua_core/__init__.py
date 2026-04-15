@@ -2,4 +2,4 @@
 
 __version__ = "0.1.8"
 
-from core.http import CUA_CLIENT_VERSION_HEADER, cua_version_headers
+from cua_core.http import CUA_CLIENT_VERSION_HEADER, cua_version_headers

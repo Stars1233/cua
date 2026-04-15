@@ -30,7 +30,7 @@ except Exception:  # pragma: no cover
 P = ParamSpec("P")
 R = TypeVar("R")
 
-from core.telemetry import is_telemetry_enabled, record_event
+from cua_core.telemetry import is_telemetry_enabled, record_event
 from PIL import Image
 
 from . import helpers
@@ -44,7 +44,7 @@ from .tracing_wrapper import TracingInterfaceWrapper
 
 # Import OTEL functions for session-level metrics
 try:
-    from core.telemetry import (
+    from cua_core.telemetry import (
         is_otel_enabled,
         record_operation,
         track_concurrent,

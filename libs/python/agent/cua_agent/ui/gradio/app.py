@@ -29,8 +29,8 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, Union, cast
 import gradio as gr
 
 # Import from agent package
-from agent import ComputerAgent
-from agent.types import AgentResponse, Messages
+from cua_agent import ComputerAgent
+from cua_agent.types import AgentResponse, Messages
 
 try:
     from computer import Computer
@@ -251,7 +251,7 @@ def create_agent(
 
 def launch_ui():
     """Standalone function to launch the Gradio app."""
-    from agent.ui.gradio.ui_components import create_gradio_ui
+    from cua_agent.ui.gradio.ui_components import create_gradio_ui
 
     print("Starting Gradio app for Cua Agent...")
     demo = create_gradio_ui()

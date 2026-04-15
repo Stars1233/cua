@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 import aiohttp
-from core.http import cua_version_headers
+from cua_core.http import cua_version_headers
 from cua_cli.auth.browser import authenticate_via_browser
 from cua_cli.auth.store import (
     ACTIVE_WORKSPACE_KEY,

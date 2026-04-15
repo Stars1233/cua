@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
 import websockets
-from core.http import cua_version_headers
+from cua_core.http import cua_version_headers
 from PIL import Image
 
 from ..logger import Logger, LogLevel

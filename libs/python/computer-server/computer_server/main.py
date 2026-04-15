@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Literal, Optional, Union, cast
 
 import aiohttp
 import uvicorn
-from core.telemetry import record_event
+from cua_core.telemetry import record_event
 from fastapi import (
     FastAPI,
     Header,
@@ -41,7 +41,7 @@ except ImportError:
 AUTH_SESSION_TTL_SECONDS: int = int(os.environ.get("CUA_AUTH_TTL_SECONDS", "60"))
 
 try:
-    from agent import ComputerAgent
+    from cua_agent import ComputerAgent
 
     HAS_AGENT = True
 except ImportError:
@@ -279,7 +279,7 @@ class AuthenticationManager:
         logger.info(f"Authenticating with TryCUA API for container: {container_name}")
 
         try:
-            from core.http import cua_version_headers
+            from cua_core.http import cua_version_headers
 
             async with aiohttp.ClientSession() as session:
                 headers = {"Authorization": f"Bearer {api_key}", **cua_version_headers()}
@@ -982,7 +982,7 @@ async def agent_response_endpoint(
 
     # Define a direct computer tool that implements the AsyncComputerHandler protocol
     # and delegates to our existing automation/file/accessibility handlers.
-    from agent.computers import AsyncComputerHandler  # runtime-checkable Protocol
+    from cua_agent.computers import AsyncComputerHandler  # runtime-checkable Protocol
 
     class DirectComputerInterface:
         """Interface wrapper providing BrowserTool compatibility.

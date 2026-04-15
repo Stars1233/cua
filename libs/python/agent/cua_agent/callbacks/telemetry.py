@@ -7,7 +7,7 @@ import time
 import uuid
 from typing import Any, Dict, List, Optional, Union
 
-from core.telemetry import (
+from cua_core.telemetry import (
     is_telemetry_enabled,
     record_event,
 )

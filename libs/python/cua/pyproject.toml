@@ -28,8 +28,8 @@ classifiers = [
 requires-python = ">=3.12,<3.14"
 
 dependencies = [
-    "cua-sandbox>=0.1.1",
-    "cua-agent[cloud]>=0.7.38",
+    "cua-sandbox>=0.1.11",
+    "cua-agent[cloud]>=0.8.0",
     "cua-cli>=0.1.8",
 ]
 

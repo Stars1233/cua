@@ -1,7 +1,7 @@
 import os
 from typing import Any, AsyncIterator, Iterator
 
-from core.http import cua_version_headers
+from cua_core.http import cua_version_headers
 from litellm import acompletion, completion
 from litellm.llms.custom_llm import CustomLLM
 from litellm.types.utils import GenericStreamingChunk, ModelResponse

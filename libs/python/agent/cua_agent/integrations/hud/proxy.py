@@ -12,8 +12,8 @@ import traceback
 import uuid
 from typing import Any, Dict, List, Optional
 
-from agent.agent import ComputerAgent as BaseComputerAgent
-from agent.callbacks import PromptInstructionsCallback
+from cua_agent.agent import ComputerAgent as BaseComputerAgent
+from cua_agent.callbacks import PromptInstructionsCallback
 from hud.agents import OperatorAgent
 from hud.tools.computer.settings import computer_settings
 

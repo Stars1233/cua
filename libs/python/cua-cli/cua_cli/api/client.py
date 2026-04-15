@@ -7,7 +7,7 @@ from typing import Any, Optional
 from urllib.parse import quote
 
 import aiohttp
-from core.http import cua_version_headers
+from cua_core.http import cua_version_headers
 from cua_cli.auth.store import require_api_key
 
 DEFAULT_API_BASE = "https://api.cua.ai"

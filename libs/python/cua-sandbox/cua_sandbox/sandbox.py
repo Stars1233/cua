@@ -43,7 +43,7 @@ from typing import (
 )
 
 try:
-    from core.telemetry import is_telemetry_enabled, record_event
+    from cua_core.telemetry import is_telemetry_enabled, record_event
 
     _TELEMETRY_AVAILABLE = True
 except ImportError:
