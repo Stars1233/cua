@@ -56,8 +56,8 @@ class TestTelemetryEnabled:
 class TestPostHogTelemetryClient:
     """Test PostHogTelemetryClient class (SRP: Only tests client logic)."""
 
-    @patch("core.telemetry.posthog.posthog")
-    @patch("core.telemetry.posthog.Path")
+    @patch("cua_core.telemetry.posthog.posthog")
+    @patch("cua_core.telemetry.posthog.Path")
     def test_client_initialization(self, mock_path, mock_posthog, disable_telemetry):
         """Test that client initializes correctly."""
         from cua_core.telemetry.posthog import PostHogTelemetryClient
@@ -78,8 +78,8 @@ class TestPostHogTelemetryClient:
         assert hasattr(client, "initialized")
         assert hasattr(client, "queued_events")
 
-    @patch("core.telemetry.posthog.posthog")
-    @patch("core.telemetry.posthog.Path")
+    @patch("cua_core.telemetry.posthog.posthog")
+    @patch("cua_core.telemetry.posthog.Path")
     def test_installation_id_generation(self, mock_path, mock_posthog, disable_telemetry):
         """Test that installation ID is generated if not exists."""
         from cua_core.telemetry.posthog import PostHogTelemetryClient
@@ -102,8 +102,8 @@ class TestPostHogTelemetryClient:
         assert client.installation_id is not None
         assert len(client.installation_id) == 36  # UUID format
 
-    @patch("core.telemetry.posthog.posthog")
-    @patch("core.telemetry.posthog.Path")
+    @patch("cua_core.telemetry.posthog.posthog")
+    @patch("cua_core.telemetry.posthog.Path")
     def test_installation_id_persistence(self, mock_path, mock_posthog, disable_telemetry):
         """Test that installation ID is read from file if exists."""
         from cua_core.telemetry.posthog import PostHogTelemetryClient
@@ -127,8 +127,8 @@ class TestPostHogTelemetryClient:
 
         assert client.installation_id == existing_id
 
-    @patch("core.telemetry.posthog.posthog")
-    @patch("core.telemetry.posthog.Path")
+    @patch("cua_core.telemetry.posthog.posthog")
+    @patch("cua_core.telemetry.posthog.Path")
     def test_record_event_when_disabled(self, mock_path, mock_posthog, monkeypatch):
         """Test that events are not recorded when telemetry is disabled."""
         from cua_core.telemetry.posthog import PostHogTelemetryClient
@@ -151,8 +151,8 @@ class TestPostHogTelemetryClient:
         # PostHog capture should not be called at all when telemetry is disabled
         mock_posthog.capture.assert_not_called()
 
-    @patch("core.telemetry.posthog.posthog")
-    @patch("core.telemetry.posthog.Path")
+    @patch("cua_core.telemetry.posthog.posthog")
+    @patch("cua_core.telemetry.posthog.Path")
     def test_record_event_when_enabled(self, mock_path, mock_posthog, monkeypatch):
         """Test that events are recorded when telemetry is enabled."""
         from cua_core.telemetry.posthog import PostHogTelemetryClient
@@ -180,8 +180,8 @@ class TestPostHogTelemetryClient:
         # PostHog capture should be called
         assert mock_posthog.capture.call_count >= 1
 
-    @patch("core.telemetry.posthog.posthog")
-    @patch("core.telemetry.posthog.Path")
+    @patch("cua_core.telemetry.posthog.posthog")
+    @patch("cua_core.telemetry.posthog.Path")
     def test_singleton_pattern(self, mock_path, mock_posthog, disable_telemetry):
         """Test that get_client returns the same instance."""
         from cua_core.telemetry.posthog import PostHogTelemetryClient
@@ -204,7 +204,7 @@ class TestPostHogTelemetryClient:
 class TestRecordEvent:
     """Test the public record_event function (SRP: Only tests public API)."""
 
-    @patch("core.telemetry.posthog.PostHogTelemetryClient")
+    @patch("cua_core.telemetry.posthog.PostHogTelemetryClient")
     def test_record_event_calls_client(self, mock_client_class, disable_telemetry):
         """Test that record_event delegates to the client."""
         from cua_core.telemetry import record_event
@@ -219,7 +219,7 @@ class TestRecordEvent:
 
         mock_client_instance.record_event.assert_called_once_with(event_name, event_props)
 
-    @patch("core.telemetry.posthog.PostHogTelemetryClient")
+    @patch("cua_core.telemetry.posthog.PostHogTelemetryClient")
     def test_record_event_without_properties(self, mock_client_class, disable_telemetry):
         """Test that record_event works without properties."""
         from cua_core.telemetry import record_event
@@ -237,7 +237,7 @@ class TestRecordEvent:
 class TestDestroyTelemetryClient:
     """Test client destruction (SRP: Only tests cleanup)."""
 
-    @patch("core.telemetry.posthog.PostHogTelemetryClient")
+    @patch("cua_core.telemetry.posthog.PostHogTelemetryClient")
     def test_destroy_client_calls_class_method(self, mock_client_class):
         """Test that destroy_telemetry_client delegates correctly."""
         from cua_core.telemetry import destroy_telemetry_client

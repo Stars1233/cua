@@ -13,7 +13,7 @@ import pytest
 class TestComputerAgentInitialization:
     """Test ComputerAgent initialization (SRP: Only tests initialization)."""
 
-    @patch("agent.agent.litellm")
+    @patch("cua_agent.agent.litellm")
     def test_agent_initialization_with_model(self, mock_litellm, disable_telemetry):
         """Test that agent can be initialized with a model string."""
         from cua_agent import ComputerAgent
@@ -24,7 +24,7 @@ class TestComputerAgentInitialization:
         assert hasattr(agent, "model")
         assert agent.model == "anthropic/claude-sonnet-4-5-20250929"
 
-    @patch("agent.agent.litellm")
+    @patch("cua_agent.agent.litellm")
     def test_agent_initialization_with_tools(self, mock_litellm, disable_telemetry, mock_computer):
         """Test that agent can be initialized with tools."""
         from cua_agent import ComputerAgent
@@ -34,7 +34,7 @@ class TestComputerAgentInitialization:
         assert agent is not None
         assert hasattr(agent, "tools")
 
-    @patch("agent.agent.litellm")
+    @patch("cua_agent.agent.litellm")
     def test_agent_initialization_with_max_budget(self, mock_litellm, disable_telemetry):
         """Test that agent can be initialized with max trajectory budget."""
         from cua_agent import ComputerAgent
@@ -46,7 +46,7 @@ class TestComputerAgentInitialization:
 
         assert agent is not None
 
-    @patch("agent.agent.litellm")
+    @patch("cua_agent.agent.litellm")
     def test_agent_requires_model(self, mock_litellm, disable_telemetry):
         """Test that agent requires a model parameter."""
         from cua_agent import ComputerAgent
@@ -60,7 +60,7 @@ class TestComputerAgentRun:
     """Test ComputerAgent.run() method (SRP: Only tests run logic)."""
 
     @pytest.mark.asyncio
-    @patch("agent.agent.litellm")
+    @patch("cua_agent.agent.litellm")
     async def test_agent_run_with_messages(self, mock_litellm, disable_telemetry, sample_messages):
         """Test that agent.run() works with valid messages."""
         from cua_agent import ComputerAgent
