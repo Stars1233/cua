@@ -1,6 +1,6 @@
 [project]
 name = "cua"
-version = "0.1.4"
+version = "0.1.5"
 description = "Cua — Computer-Use Agents: unified SDK meta-package"
 readme = "README.md"
 license = "MIT"
