@@ -7,7 +7,7 @@ underlying computer (local host, WebSocket to computer-server, or cloud API).
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 if TYPE_CHECKING:
     from cua_sandbox.interfaces.tunnel import TunnelInfo
@@ -80,6 +80,32 @@ class Transport(ABC):
 
     async def close_tunnel(self, info: "TunnelInfo") -> None:
         """Release a previously forwarded port or socket.  No-op by default."""
+
+    # ── PTY sessions ────────────────────────────────────────────────────
+    # Transports that support a pseudo-terminal override these. The default
+    # implementations raise NotImplementedError.
+    async def pty_create(
+        self,
+        command: Optional[str] = None,
+        cols: int = 120,
+        rows: int = 40,
+        cwd: Optional[str] = None,
+        envs: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, Any]:
+        """Spawn a PTY session. Returns {"pid": int, "cols": int, "rows": int}."""
+        raise NotImplementedError(f"{type(self).__name__} does not support PTY.")
+
+    async def pty_send(self, pid: int, data: str) -> None:
+        """Write *data* to the PTY session's stdin."""
+        raise NotImplementedError(f"{type(self).__name__} does not support PTY.")
+
+    async def pty_kill(self, pid: int) -> bool:
+        """Terminate a PTY session."""
+        raise NotImplementedError(f"{type(self).__name__} does not support PTY.")
+
+    async def pty_info(self, pid: int) -> Optional[Dict[str, Any]]:
+        """Return session info if still running, None otherwise."""
+        raise NotImplementedError(f"{type(self).__name__} does not support PTY.")
 
     async def get_display_url(self, *, share: bool = False) -> str:
         """Return a URL to view this sandbox's display.

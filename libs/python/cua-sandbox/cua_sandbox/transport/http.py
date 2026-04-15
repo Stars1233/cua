@@ -104,6 +104,46 @@ class HTTPTransport(Transport):
                 return {"width": int(w), "height": int(h)}
         raise KeyError(f"Cannot extract screen size from response: {result}")
 
+    # ── PTY over dedicated /pty_* routes ────────────────────────────────
+    async def pty_create(
+        self,
+        command: Optional[str] = None,
+        cols: int = 120,
+        rows: int = 40,
+        cwd: Optional[str] = None,
+        envs: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, Any]:
+        assert self._client is not None, "Transport not connected"
+        body: Dict[str, Any] = {"cols": cols, "rows": rows}
+        if command is not None:
+            body["command"] = command
+        if cwd is not None:
+            body["cwd"] = cwd
+        if envs is not None:
+            body["envs"] = envs
+        resp = await self._client.post("/pty", json=body)
+        resp.raise_for_status()
+        return resp.json()
+
+    async def pty_send(self, pid: int, data: str) -> None:
+        assert self._client is not None, "Transport not connected"
+        resp = await self._client.post(f"/pty/{pid}/stdin", json={"data": data})
+        resp.raise_for_status()
+
+    async def pty_kill(self, pid: int) -> bool:
+        assert self._client is not None, "Transport not connected"
+        resp = await self._client.delete(f"/pty/{pid}")
+        resp.raise_for_status()
+        return bool(resp.json().get("killed", True))
+
+    async def pty_info(self, pid: int) -> Optional[Dict[str, Any]]:
+        assert self._client is not None, "Transport not connected"
+        resp = await self._client.get(f"/pty/{pid}")
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return resp.json()
+
     async def get_environment(self) -> str:
         # computer-server doesn't have a dedicated endpoint; use /status
         try:

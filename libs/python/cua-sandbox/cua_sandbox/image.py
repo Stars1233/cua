@@ -126,9 +126,9 @@ class Image:
 
     @classmethod
     def linux(
-        cls, distro: str = "ubuntu", version: str = "24.04", kind: str = "container"
+        cls, distro: str = "ubuntu", version: str = "24.04", kind: str = "vm"
     ) -> Image:
-        """Linux image. Defaults to 'container' (Docker/XFCE). Use kind='vm' for QEMU."""
+        """Linux image. Defaults to 'vm' (QEMU). Use kind='container' for Docker/XFCE."""
         return cls(os_type="linux", distro=distro, version=version, kind=kind)
 
     @classmethod
@@ -339,6 +339,14 @@ class Image:
     def pip_install(self, *packages: str) -> Image:
         """Install Python packages via pip."""
         return self._add_layer({"type": "pip_install", "packages": list(packages)})
+
+    def app_install(self, app_id: str) -> Image:
+        """Install an app from the cua-sandbox-apps catalog.
+
+        Requires ``cua-sandbox-apps`` to be installed. The app's install
+        script for this image's OS is executed as a build layer.
+        """
+        return self._add_layer({"type": "app_install", "app_id": app_id})
 
     def run(self, command: str) -> Image:
         """Run a shell command during image build."""

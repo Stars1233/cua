@@ -19,6 +19,7 @@ on:
           - pypi/core
           - pypi/mcp-server
           - pypi/sandbox
+          - pypi/sandbox-apps
           - pypi/som
           - npm/cli
           - npm/computer
@@ -95,6 +96,10 @@ jobs:
               ;;
             "pypi/sandbox")
               echo "directory=libs/python/cua-sandbox" >> $GITHUB_OUTPUT
+              echo "type=python" >> $GITHUB_OUTPUT
+              ;;
+            "pypi/sandbox-apps")
+              echo "directory=libs/python/cua-sandbox-apps" >> $GITHUB_OUTPUT
               echo "type=python" >> $GITHUB_OUTPUT
               ;;
             "pypi/som")
@@ -315,6 +320,15 @@ jobs:
           cd libs/python/cua-sandbox
           VERSION=$(python -c "import tomllib; from pathlib import Path; data = tomllib.loads(Path('pyproject.toml').read_text()); print(data['project']['version'])")
           echo "Sandbox version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Capture bumped sandbox-apps version
+        if: ${{ inputs.service == 'pypi/sandbox-apps' }}
+        id: sandbox_apps_version
+        run: |
+          cd libs/python/cua-sandbox-apps
+          VERSION=$(python -c "import tomllib; from pathlib import Path; data = tomllib.loads(Path('pyproject.toml').read_text()); print(data['project']['version'])")
+          echo "Sandbox-apps version: $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Capture bumped som version

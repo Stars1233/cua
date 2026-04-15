@@ -24,18 +24,12 @@ logger = logging.getLogger(__name__)
 
 
 def _find_free_port(start: int = 8000, end: int = 9000) -> int:
-    """Return the first TCP port in [start, end) not currently bound."""
+    """Return a free TCP port. Uses OS assignment (port 0) to avoid races."""
     import socket
 
-    for port in range(start, end):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            try:
-                s.bind(("", port))
-                return port
-            except OSError:
-                continue
-    raise RuntimeError(f"No free port found in range {start}–{end}")
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("", 0))
+        return s.getsockname()[1]
 
 
 def _docker_bin() -> str:

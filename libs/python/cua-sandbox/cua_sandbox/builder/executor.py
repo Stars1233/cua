@@ -16,6 +16,45 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+_OS_EXT = {"linux": "sh", "macos": "sh", "android": "sh", "windows": "ps1"}
+
+
+def _find_app_install_script(app_id: str, os_type: str) -> str | None:
+    """Locate the install script for *app_id* from cua-sandbox-apps.
+
+    Returns the script text, or None if not found.
+    """
+    ext = _OS_EXT.get(os_type, "sh")
+    # Try cua_sandbox_apps package path first
+    try:
+        import importlib.resources
+        from pathlib import Path
+
+        import cua_sandbox_apps
+        apps_dir = Path(cua_sandbox_apps.__file__).parent / "apps"
+        script_path = apps_dir / app_id / os_type / f"install.{ext}"
+        if script_path.exists():
+            return script_path.read_text(encoding="utf-8")
+    except (ImportError, Exception):
+        pass
+    return None
+
+
+def _find_app_launch_script(app_id: str, os_type: str) -> str | None:
+    """Locate the launch script for *app_id* from cua-sandbox-apps."""
+    ext = _OS_EXT.get(os_type, "sh")
+    try:
+        from pathlib import Path
+
+        import cua_sandbox_apps
+        apps_dir = Path(cua_sandbox_apps.__file__).parent / "apps"
+        script_path = apps_dir / app_id / os_type / f"launch.{ext}"
+        if script_path.exists():
+            return script_path.read_text(encoding="utf-8")
+    except (ImportError, Exception):
+        pass
+    return None
+
 
 class LayerExecutor:
     """Execute Image layer specs against a running computer-server."""
@@ -228,6 +267,22 @@ class LayerExecutor:
         r = await self.run_command(f"{sudo} mv {_sh_quote(tmp_path)} {_sh_quote(dst)}")
         rc = r.get("return_code", r.get("returncode", -1))
         return {"success": rc == 0, "return_code": rc, "stderr": r.get("stderr", "")}
+
+    async def _exec_app_install(self, layer: dict) -> dict:
+        """Install an app from cua-sandbox-apps. Reads its install.sh and runs it."""
+        app_id = layer["app_id"]
+        try:
+            from cua_sandbox_apps.pipeline.task_creator_agent import _resolve_app_scripts
+        except ImportError:
+            # cua-sandbox-apps not installed — try to locate the script file directly
+            pass
+        # Locate the install script from the apps catalog
+        script = _find_app_install_script(app_id, self.os_type)
+        if script is None:
+            return {"success": False, "return_code": 1,
+                    "stderr": f"No install script found for app '{app_id}' on {self.os_type}. "
+                              f"Install cua-sandbox-apps or run 'cua-sandbox-apps generate' first."}
+        return await self.run_command(f"bash -c {_sh_quote(script)}", timeout=900)
 
     async def _exec_expose(self, layer: dict) -> dict:
         # Expose is a no-op at layer execution time — ports are mapped by the runtime

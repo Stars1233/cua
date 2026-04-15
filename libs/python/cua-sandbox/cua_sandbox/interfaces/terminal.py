@@ -13,18 +13,18 @@ class Terminal:
     def __init__(self, transport: Transport):
         self._t = transport
 
-    async def create(self, shell: str = "bash", cols: int = 80, rows: int = 24) -> dict:
+    async def create(self, command: Optional[str] = None, cols: int = 80, rows: int = 24) -> dict:
         """Create a new PTY session. Returns {"pid": int, "cols": int, "rows": int}."""
-        return await self._t.send("terminal_create", shell=shell, cols=cols, rows=rows)
+        return await self._t.pty_create(command=command, cols=cols, rows=rows)
 
     async def send_input(self, pid: int, data: str) -> None:
         """Send input to a PTY session."""
-        await self._t.send("terminal_send", pid=pid, data=data)
+        await self._t.pty_send(pid, data)
 
-    async def resize(self, pid: int, cols: int, rows: int) -> None:
-        """Resize a PTY session."""
-        await self._t.send("terminal_resize", pid=pid, cols=cols, rows=rows)
+    async def info(self, pid: int) -> Optional[dict]:
+        """Return session info or None if gone."""
+        return await self._t.pty_info(pid)
 
-    async def close(self, pid: int) -> Optional[int]:
-        """Close a PTY session. Returns exit code."""
-        return await self._t.send("terminal_close", pid=pid)
+    async def close(self, pid: int) -> bool:
+        """Kill a PTY session."""
+        return await self._t.pty_kill(pid)

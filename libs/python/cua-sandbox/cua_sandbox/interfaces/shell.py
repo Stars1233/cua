@@ -24,8 +24,23 @@ class Shell:
     def __init__(self, transport: Transport):
         self._t = transport
 
-    async def run(self, command: str, timeout: int = 30) -> CommandResult:
-        """Run a shell command and return the result."""
+    async def run(
+        self,
+        command: str,
+        timeout: int = 30,
+        background: bool = False,
+    ) -> CommandResult:
+        """Run a shell command and return the result.
+
+        When ``background=True``, returns immediately with ``stdout=str(pid)``
+        and ``returncode=0``; poll for completion via a sentinel file or by
+        inspecting the process list.
+        """
+        if background:
+            session = await self._t.pty_create(command=command)
+            pid = session.get("pid") if isinstance(session, dict) else None
+            return CommandResult(stdout=str(pid or ""), stderr="", returncode=0)
+
         result = await self._t.send("run_command", command=command, timeout=timeout)
         if isinstance(result, dict):
             rc = result.get("returncode", result.get("return_code", -1))
