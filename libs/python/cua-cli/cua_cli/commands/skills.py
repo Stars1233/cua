@@ -418,13 +418,7 @@ def cmd_record(args: argparse.Namespace) -> int:
 
 def _check_ffmpeg() -> bool:
     """Check if ffmpeg is available."""
-    import subprocess
-
-    try:
-        result = subprocess.run(["which", "ffmpeg"], capture_output=True)
-        return result.returncode == 0
-    except Exception:
-        return False
+    return shutil.which("ffmpeg") is not None
 
 
 async def _record_skill_async(args: argparse.Namespace) -> int:
