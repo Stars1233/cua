@@ -68,12 +68,51 @@ class HTTPTransport(Transport):
 
     @staticmethod
     def _parse_sse(text: str) -> Dict[str, Any]:
-        """Extract the first ``data: {...}`` frame from an SSE response."""
+        """Extract the first ``data: {...}`` frame from an SSE response.
+
+        The server returns one of two failure shapes when ``success`` is
+        false:
+
+        1. Generic handler error — ``{"success": false, "error": "<msg>"}``
+        2. Shell-command shape — ``{"success": false, "stdout": "...",
+           "stderr": "...", "return_code": <n>}`` (no ``error`` key)
+
+        The old code stringified ``payload.get('error', 'unknown')`` for
+        both shapes, which turned every shell-command failure into
+        ``Remote error: unknown`` and hid the actual ``stderr`` + exit
+        code.  That masking made ``Command timed out after 10s``,
+        ``UI hierchary dump failed``, and similar concrete failures
+        indistinguishable from a genuine internal error — the common
+        pattern where ``await sb.shell.run(cmd)`` returned non-zero
+        became a debugging dead end.
+
+        This rewrite preserves the ``error``-key path verbatim and falls
+        back to a composite ``return_code=...`` / ``stderr=...`` /
+        ``stdout=...`` string when no ``error`` key is present.
+        """
         for line in text.splitlines():
             if line.startswith("data: "):
                 payload = json.loads(line[6:])
                 if isinstance(payload, dict) and not payload.get("success", True):
-                    raise RuntimeError(f"Remote error: {payload.get('error', 'unknown')}")
+                    if "error" in payload:
+                        raise RuntimeError(f"Remote error: {payload['error']}")
+                    # Shell-command shape: surface return_code/stderr/stdout.
+                    parts = []
+                    rc = payload.get("return_code")
+                    if rc is not None:
+                        parts.append(f"return_code={rc}")
+                    stderr = (payload.get("stderr") or "").strip()
+                    if stderr:
+                        parts.append(f"stderr={stderr!r}")
+                    stdout = (payload.get("stdout") or "").strip()
+                    if stdout and not stderr:
+                        # Only surface stdout when there's nothing on
+                        # stderr — saves bloating the message for noisy
+                        # successful-output commands that happened to
+                        # return non-zero.
+                        parts.append(f"stdout={stdout!r}")
+                    detail = ", ".join(parts) or "no detail"
+                    raise RuntimeError(f"Remote error: {detail}")
                 return payload
         raise RuntimeError(f"No SSE data frame in response: {text[:200]}")
 
