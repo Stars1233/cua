@@ -687,8 +687,21 @@ class AndroidAutomationHandler(BaseAutomationHandler):
         success, output = await adb_exec.run("shell", script, decode=True)
         return {"success": success, "output": output}
 
-    async def run_command(self, command: str) -> Dict[str, Any]:
-        """Run a shell command inside the Android emulator via adb shell."""
+    async def run_command(
+        self, command: str, timeout: Optional[float] = None
+    ) -> Dict[str, Any]:
+        """Run a shell command inside the Android emulator via adb shell.
+
+        Args:
+            command: The shell command to run (inside the emulator, via adb).
+            timeout: Optional timeout in seconds.  When ``None`` (default),
+                waits indefinitely.  SDK callers propagate their
+                ``sb.shell.run(cmd, timeout=...)`` value here so long-running
+                Android commands (e.g. ``uiautomator dump`` on a heavy PWA
+                under concurrent emulator CPU contention) can be given a
+                realistic budget instead of being cut off by a server-side
+                hardcoded default.
+        """
         process = await asyncio.create_subprocess_exec(
             "adb",
             "-s",
@@ -698,7 +711,21 @@ class AndroidAutomationHandler(BaseAutomationHandler):
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await process.communicate()
+        try:
+            if timeout is None:
+                stdout, stderr = await process.communicate()
+            else:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(), timeout=timeout
+                )
+        except asyncio.TimeoutError:
+            process.kill()
+            return {
+                "success": False,
+                "stdout": "",
+                "stderr": f"Command timed out after {timeout}s",
+                "return_code": -1,
+            }
         return {
             "success": process.returncode == 0,
             "stdout": stdout.decode() if stdout else "",

@@ -377,11 +377,23 @@ class BaseAutomationHandler(ABC):
             return {"success": False, "error": str(e)}
 
     # Command Execution
-    async def run_command(self, command: str) -> Dict[str, Any]:
+    async def run_command(
+        self, command: str, timeout: Optional[float] = None
+    ) -> Dict[str, Any]:
         """Run a shell command locally and return its output.
 
         When IS_CUA_ANDROID env var is set, routes the command through
         ``adb shell`` so execution runs inside the Android emulator.
+
+        Args:
+            command: The shell command to run.
+            timeout: Optional timeout in seconds.  When ``None`` (default),
+                the command runs until completion with no upper bound.  SDK
+                callers set this via ``sb.shell.run(cmd, timeout=...)``
+                (see ``cua_sandbox.interfaces.shell.Shell.run``).  On
+                expiry the subprocess is killed and the result is
+                ``{"success": False, "stderr": "Command timed out after <t>s",
+                "return_code": -1}``.
         """
         import os
 
@@ -398,7 +410,21 @@ class BaseAutomationHandler(ABC):
                 process = await asyncio.create_subprocess_shell(
                     command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                 )
-            stdout, stderr = await process.communicate()
+            try:
+                if timeout is None:
+                    stdout, stderr = await process.communicate()
+                else:
+                    stdout, stderr = await asyncio.wait_for(
+                        process.communicate(), timeout=timeout
+                    )
+            except asyncio.TimeoutError:
+                process.kill()
+                return {
+                    "success": False,
+                    "stdout": "",
+                    "stderr": f"Command timed out after {timeout}s",
+                    "return_code": -1,
+                }
             return {
                 "success": True,
                 "stdout": stdout.decode() if stdout else "",

@@ -709,11 +709,16 @@ class WindowsAutomationHandler(BaseAutomationHandler):
     # Clipboard inherited from BaseAutomationHandler
 
     # Command Execution (Windows override for multi-encoding support)
-    async def run_command(self, command: str) -> Dict[str, Any]:
+    async def run_command(
+        self, command: str, timeout: Optional[float] = None
+    ) -> Dict[str, Any]:
         """Execute a shell command asynchronously.
 
         Args:
             command (str): The shell command to execute.
+            timeout (Optional[float]): Optional timeout in seconds.  When
+                ``None`` (default), waits indefinitely.  SDK callers set
+                this via ``sb.shell.run(cmd, timeout=...)``.
 
         Returns:
             Dict[str, Any]: A dictionary containing the success status and either
@@ -746,7 +751,21 @@ class WindowsAutomationHandler(BaseAutomationHandler):
                 process = await asyncio.create_subprocess_shell(
                     command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                 )
-            stdout, stderr = await process.communicate()
+            try:
+                if timeout is None:
+                    stdout, stderr = await process.communicate()
+                else:
+                    stdout, stderr = await asyncio.wait_for(
+                        process.communicate(), timeout=timeout
+                    )
+            except asyncio.TimeoutError:
+                process.kill()
+                return {
+                    "success": False,
+                    "stdout": "",
+                    "stderr": f"Command timed out after {timeout}s",
+                    "return_code": -1,
+                }
             return {
                 "success": True,
                 "stdout": decode_output(stdout),
