@@ -37,9 +37,6 @@ try:
 except ImportError:
     HAS_MCP = False
 
-# Authentication session TTL (in seconds). Override via env var CUA_AUTH_TTL_SECONDS. Default: 60s
-AUTH_SESSION_TTL_SECONDS: int = int(os.environ.get("CUA_AUTH_TTL_SECONDS", "60"))
-
 # Status code returned when UNAVAILABLE_WITHOUT_CONTAINER_NAME is set and CONTAINER_NAME is missing.
 DEFAULT_UNAVAILABLE_STATUS_CODE: int = 503
 
@@ -330,27 +327,23 @@ if hasattr(automation_handler, "multitouch_gesture"):
 
 class AuthenticationManager:
     def __init__(self):
-        self.sessions: Dict[str, Dict[str, Any]] = {}
         self.container_name = os.environ.get("CONTAINER_NAME")
         self.api_base_url = os.environ.get(
             "CUA_BASE_URL_AUTH", "https://www.cua.ai"
         ).rstrip("/")
 
-    def _hash_credentials(self, container_name: str, api_key: str) -> str:
-        """Create a hash of container name and API key for session identification"""
-        combined = f"{container_name}:{api_key}"
-        return hashlib.sha256(combined.encode()).hexdigest()
-
-    def _is_session_valid(self, session_data: Dict[str, Any]) -> bool:
-        """Check if a session is still valid based on expiration time"""
-        if not session_data.get("valid", False):
-            return False
-
-        expires_at = session_data.get("expires_at", 0)
-        return time.time() < expires_at
-
     async def auth(self, container_name: str, api_key: str) -> bool:
-        """Authenticate container name and API key, using cached sessions when possible"""
+        """Authenticate container name and API key against the TryCUA API.
+
+        Every call hits the API directly — results are not cached.  The
+        previous implementation cached both successes and failures with a
+        60 s TTL (``CUA_AUTH_TTL_SECONDS``), but that caused transient
+        network/DNS errors immediately after VM boot to lock out legitimate
+        clients for the full TTL window.  Since the gate sits in front of
+        every SDK request on a freshly provisioned VM, a single cold-start
+        DNS hiccup would flip the VM into a perpetually-401 state until
+        the TTL expired.
+        """
         # If no CONTAINER_NAME is set, always allow access (local development)
         if not self.container_name:
             logger.info(
@@ -365,20 +358,6 @@ class AuthenticationManager:
             )
             return False
 
-        # Create hash for session lookup
-        session_hash = self._hash_credentials(container_name, api_key)
-
-        # Check if we have a valid cached session
-        if session_hash in self.sessions:
-            session_data = self.sessions[session_hash]
-            if self._is_session_valid(session_data):
-                logger.info(f"Using cached authentication for container: {container_name}")
-                return session_data["valid"]
-            else:
-                # Remove expired session
-                del self.sessions[session_hash]
-
-        # No valid cached session, authenticate with API
         logger.info(f"Authenticating with TryCUA API for container: {container_name}")
 
         try:
@@ -393,12 +372,6 @@ class AuthenticationManager:
                 ) as resp:
                     is_valid = resp.status == 200 and bool((await resp.text()).strip())
 
-                    # Cache the result with configurable expiration
-                    self.sessions[session_hash] = {
-                        "valid": is_valid,
-                        "expires_at": time.time() + AUTH_SESSION_TTL_SECONDS,
-                    }
-
                     if is_valid:
                         logger.info(f"Authentication successful for container: {container_name}")
                     else:
@@ -410,19 +383,9 @@ class AuthenticationManager:
 
         except aiohttp.ClientError as e:
             logger.error(f"Failed to validate API key with TryCUA API: {str(e)}")
-            # Cache failed result to avoid repeated requests
-            self.sessions[session_hash] = {
-                "valid": False,
-                "expires_at": time.time() + AUTH_SESSION_TTL_SECONDS,
-            }
             return False
         except Exception as e:
             logger.error(f"Unexpected error during authentication: {str(e)}")
-            # Cache failed result to avoid repeated requests
-            self.sessions[session_hash] = {
-                "valid": False,
-                "expires_at": time.time() + AUTH_SESSION_TTL_SECONDS,
-            }
             return False
 
 
