@@ -6,9 +6,10 @@ import time
 from dataclasses import dataclass, field
 from typing import Optional
 
-from .grpo import GRPOConfig
-from tinker_cookbook import checkpoint_utils, model_info, renderers
+from tinker_cookbook import model_info, renderers
 from tinker_cookbook.image_processing_utils import get_image_processor
+
+from .grpo import GRPOConfig
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -72,11 +73,11 @@ def run(config: TrainingConfig) -> None:
     All Tinker imports are deferred so the module can be imported in
     environments where ``tinker`` is not installed.
     """
-    from tinker import ServiceClient
     import tinker.types as tt
-    from transformers import AutoTokenizer, AutoProcessor
+    from tinker import ServiceClient
+    from transformers import AutoTokenizer
 
-    from . import traces, rollout, grpo, checkpoints
+    from . import checkpoints, grpo, rollout, traces
     from .rollout import _get_run_output_dir
 
     if config.mode not in ("online", "offline"):
@@ -96,9 +97,11 @@ def run(config: TrainingConfig) -> None:
 
     # --- Resume or fresh start ---
     resume_info = checkpoints.get_last_checkpoint(config.log_path)
-    
+
     if resume_info:
-        print(f"[loop] Resuming from checkpoint: {resume_info.state_path} (epoch {resume_info.epoch})")
+        print(
+            f"[loop] Resuming from checkpoint: {resume_info.state_path} (epoch {resume_info.epoch})"
+        )
         training_client = service_client.create_training_client_from_state_with_optimizer(
             resume_info.state_path
         )
@@ -113,14 +116,14 @@ def run(config: TrainingConfig) -> None:
         start_epoch = 0
 
     # --- Tokenizer ---
-    tokenizer = AutoTokenizer.from_pretrained(
-        config.base_model, trust_remote_code=True
-    )
-    
+    tokenizer = AutoTokenizer.from_pretrained(config.base_model, trust_remote_code=True)
+
     image_processor = get_image_processor(config.base_model)
-    
+
     renderer_name = model_info.get_recommended_renderer_name(config.base_model)
-    renderer = renderers.get_renderer(renderer_name, tokenizer=tokenizer, image_processor=image_processor)
+    renderer = renderers.get_renderer(
+        renderer_name, tokenizer=tokenizer, image_processor=image_processor
+    )
 
     # --- Sampling params for reference logprobs ---
     sampling_params = tt.SamplingParams(max_tokens=1)
@@ -146,7 +149,7 @@ def run(config: TrainingConfig) -> None:
                 log_path=config.log_path,
                 kind="state",
                 loop_state={"epoch": epoch - 1},
-                ttl_seconds=config.ttl_seconds
+                ttl_seconds=config.ttl_seconds,
             )
 
         # 2. Snapshot current weights for reference logprobs
@@ -179,9 +182,7 @@ def run(config: TrainingConfig) -> None:
 
         # 4. Load traces from all rollout runs
         episodes = traces.load_runs(run_dirs)
-        
-        breakpoint()
-        
+
         if not episodes:
             print(f"[loop] No valid episodes across {len(run_dirs)} runs. Skipping epoch.")
             continue
@@ -207,7 +208,7 @@ def run(config: TrainingConfig) -> None:
 
         # 5. Build datums
         print("[loop] Building training batch...")
-        
+
         datums_D = grpo.build_batch(
             renderer=renderer,
             episodes=episodes,
@@ -215,7 +216,7 @@ def run(config: TrainingConfig) -> None:
             sampling_params=sampling_params,
             tokenizer=tokenizer,
             gamma=config.grpo.gamma,
-            max_images=config.grpo.max_images
+            max_images=config.grpo.max_images,
         )
 
         # 6. Training step
@@ -243,7 +244,7 @@ def run(config: TrainingConfig) -> None:
         loop_state={"epoch": config.epochs},
         ttl_seconds=None,
     )
-    print(f"\n[loop] Training complete.")
+    print("\n[loop] Training complete.")
 
 
 # ---------------------------------------------------------------------------
@@ -256,33 +257,47 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Off-policy RL training loop using Tinker (GRPO-style).",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    p.add_argument("--mode", choices=["online", "offline"], default="online",
-                   help="'online' collects rollouts via cb run; 'offline' uses pre-collected run IDs")
+    p.add_argument(
+        "--mode",
+        choices=["online", "offline"],
+        default="online",
+        help="'online' collects rollouts via cb run; 'offline' uses pre-collected run IDs",
+    )
     p.add_argument("--base-model", default="Qwen/Qwen3-8B")
     p.add_argument("--lora-rank", type=int, default=16)
     p.add_argument("--tasks-path", default="tasks/")
     p.add_argument("--agent", default="opencua")
-    p.add_argument("--model", default="openai/opencua",
-                   help="litellm model string forwarded to cb run")
+    p.add_argument(
+        "--model", default="openai/opencua", help="litellm model string forwarded to cb run"
+    )
     p.add_argument("--max-steps", type=int, default=50)
     p.add_argument("--vllm-url", default="http://localhost:30000/v1")
     p.add_argument("--epochs", type=int, default=20)
     p.add_argument("--save-every", type=int, default=5)
     p.add_argument("--log-path", default="/tmp/tinker-cua-rl")
-    p.add_argument("--num-rollouts", type=int, default=2,
-                   help="Number of rollouts per task per epoch (>= 2 for GRPO)")
-    p.add_argument("--offline-run-ids", nargs="*", default=[],
-                   help="Run IDs for offline mode (reused every epoch)")
+    p.add_argument(
+        "--num-rollouts",
+        type=int,
+        default=2,
+        help="Number of rollouts per task per epoch (>= 2 for GRPO)",
+    )
+    p.add_argument(
+        "--offline-run-ids",
+        nargs="*",
+        default=[],
+        help="Run IDs for offline mode (reused every epoch)",
+    )
     p.add_argument("--gamma", type=float, default=0.99)
     p.add_argument("--lr", type=float, default=1e-5)
-    p.add_argument("--beta1", type=float, default=0.9,
-                   help="AdamW beta1")
-    p.add_argument("--beta2", type=float, default=0.95,
-                   help="AdamW beta2")
-    p.add_argument("--max-images", type=int, default=3,
-                   help="Maximum number of recent screenshots to keep per trajectory")
-    p.add_argument("--resume-from", default=None,
-                   help="tinker:// checkpoint path to resume from")
+    p.add_argument("--beta1", type=float, default=0.9, help="AdamW beta1")
+    p.add_argument("--beta2", type=float, default=0.95, help="AdamW beta2")
+    p.add_argument(
+        "--max-images",
+        type=int,
+        default=3,
+        help="Maximum number of recent screenshots to keep per trajectory",
+    )
+    p.add_argument("--resume-from", default=None, help="tinker:// checkpoint path to resume from")
     return p
 
 

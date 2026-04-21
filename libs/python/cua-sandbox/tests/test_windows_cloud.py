@@ -7,14 +7,15 @@ Run:
 
 import os
 import time
-import sys
 
 import pytest
-
 from cua_sandbox import Image, Sandbox
 
 pytestmark = pytest.mark.asyncio
-P = lambda *a, **kw: print(*a, **kw, flush=True)
+
+
+def P(*a, **kw):
+    print(*a, **kw, flush=True)
 
 
 def _has_env() -> bool:
@@ -27,7 +28,7 @@ async def test_windows_create_and_snapshot():
 
     t0 = time.monotonic()
 
-    P(f"\n  Creating Sandbox with Image.windows('server-2025')...")
+    P("\n  Creating Sandbox with Image.windows('server-2025')...")
     async with Sandbox.ephemeral(Image.windows("server-2025"), local=False) as sb:
         t_create = time.monotonic() - t0
         P(f"  Sandbox ready: {t_create:.1f}s  name={sb.name}")
@@ -42,14 +43,14 @@ async def test_windows_create_and_snapshot():
 
         # Snapshot
         t1 = time.monotonic()
-        P(f"  Taking snapshot...")
+        P("  Taking snapshot...")
         snapshot_img = await sb.snapshot()
         t_snap = time.monotonic() - t1
         P(f"  Snapshot: {t_snap:.2f}s")
 
         # Fork from snapshot
         t2 = time.monotonic()
-        P(f"  Forking from snapshot...")
+        P("  Forking from snapshot...")
         async with Sandbox.ephemeral(snapshot_img, local=False) as fork:
             t_fork = time.monotonic() - t2
             P(f"  Fork ready: {t_fork:.1f}s  name={fork.name}")
@@ -62,7 +63,7 @@ async def test_windows_create_and_snapshot():
                 fork_screen = None
 
         t_total = time.monotonic() - t0
-        P(f"\n  === TIMINGS ===")
+        P("\n  === TIMINGS ===")
         P(f"  Create+ready:  {t_create:.1f}s")
         P(f"  Snapshot:      {t_snap:.2f}s")
         P(f"  Fork+ready:    {t_fork:.1f}s")
@@ -75,7 +76,7 @@ async def test_windows_stateful_snapshot_fork():
 
     t0 = time.monotonic()
 
-    P(f"\n  Creating Sandbox with Image.windows('server-2025')...")
+    P("\n  Creating Sandbox with Image.windows('server-2025')...")
     async with Sandbox.ephemeral(Image.windows("server-2025"), local=False) as sb:
         t_create = time.monotonic() - t0
         P(f"  Sandbox ready: {t_create:.1f}s  name={sb.name}")
@@ -86,14 +87,14 @@ async def test_windows_stateful_snapshot_fork():
 
         # Stateful snapshot — captures memory state
         t1 = time.monotonic()
-        P(f"  Taking stateful snapshot...")
+        P("  Taking stateful snapshot...")
         snapshot_img = await sb.snapshot(stateful=True)
         t_snap = time.monotonic() - t1
         P(f"  Stateful snapshot: {t_snap:.2f}s")
 
         # Fork from stateful snapshot — should resume instantly
         t2 = time.monotonic()
-        P(f"  Forking from stateful snapshot...")
+        P("  Forking from stateful snapshot...")
         async with Sandbox.ephemeral(snapshot_img, local=False) as fork:
             t_fork = time.monotonic() - t2
             P(f"  Fork ready: {t_fork:.1f}s  name={fork.name}")
@@ -104,7 +105,7 @@ async def test_windows_stateful_snapshot_fork():
             assert len(fork_screen) > 1000, "Fork screenshot should be non-trivial"
 
         t_total = time.monotonic() - t0
-        P(f"\n  === STATEFUL TIMINGS ===")
+        P("\n  === STATEFUL TIMINGS ===")
         P(f"  Create+ready:      {t_create:.1f}s")
         P(f"  Stateful snapshot: {t_snap:.2f}s")
         P(f"  Fork+ready:        {t_fork:.1f}s  (should be <10s with stateful)")

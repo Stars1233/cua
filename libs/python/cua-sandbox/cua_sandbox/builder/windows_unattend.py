@@ -31,7 +31,9 @@ def download_file(url: str, dest: Path, description: str = "") -> Path:
     return dest
 
 
-def _resolve_server_eval_url(server_version: str, culture: str = "en-us", country: str = "US") -> str:
+def _resolve_server_eval_url(
+    server_version: str, culture: str = "en-us", country: str = "US"
+) -> str:
     """Resolve Windows Server evaluation ISO download URL from Microsoft's eval center.
 
     Adapted from quickemu/quickget's download_windows_server() which is itself
@@ -200,7 +202,10 @@ def generate_autounattend_xml(
         image_name = _server_image_names.get(version)
         # Use /IMAGE/NAME for server (more reliable than index)
         image_select_key = "/IMAGE/NAME"
-        image_select_value = image_name or f"Windows Server {version.split('-')[1]} Standard Evaluation (Desktop Experience)"
+        image_select_value = (
+            image_name
+            or f"Windows Server {version.split('-')[1]} Standard Evaluation (Desktop Experience)"
+        )
     else:
         image_select_key = "/IMAGE/INDEX"
         image_select_value = "1"

@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 
 import aiohttp
-from cua_core.http import cua_version_headers
 from cua_cli.auth.browser import authenticate_via_browser
 from cua_cli.auth.store import (
     ACTIVE_WORKSPACE_KEY,
@@ -22,6 +21,7 @@ from cua_cli.auth.store import (
 )
 from cua_cli.utils.async_utils import run_async
 from cua_cli.utils.output import print_error, print_info, print_success
+from cua_core.http import cua_version_headers
 
 DEFAULT_API_BASE = "https://api.cua.ai"
 

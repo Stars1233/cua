@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
@@ -106,8 +106,8 @@ def _build_datum(
 
     All four arrays must have the same length (``model_input.length``).
     """
-    import torch
     import tinker.types as tt
+    import torch
     from tinker.types.tensor_data import TensorData
 
     if not any(a != 0.0 for a in advantages):
@@ -126,7 +126,7 @@ def _build_datum(
             "target_tokens": TensorData.from_torch(torch.tensor(target_tokens)),
             "logprobs": TensorData.from_torch(torch.tensor(ref_logprobs)),
             "advantages": TensorData.from_torch(torch.tensor(advantages)),
-        }
+        },
     )
 
 
@@ -153,7 +153,6 @@ def build_batch(
     Observation / system-prompt tokens are masked (advantage = 0).
     One datum is produced per trajectory.
     """
-    import tinker.types as tt
 
     task_groups = _group_episodes_by_task(episodes)
 
@@ -165,7 +164,7 @@ def build_batch(
     for task_desc, task_episodes in task_groups.items():
         for ep in task_episodes:
             advantage = _trajectory_advantage(ep, task_episodes)
-            
+
             steps = _retained_steps(ep, max_images=max_images)
             if not steps:
                 continue
@@ -177,9 +176,7 @@ def build_batch(
             for k, step in enumerate(steps):
                 obs_msgs = _build_messages_up_to_obs(ep, steps, k)
                 obs_prompt = renderer.build_generation_prompt(obs_msgs)
-                action_ids_k = tokenizer.encode(
-                    step.action_text, add_special_tokens=False
-                )
+                action_ids_k = tokenizer.encode(step.action_text, add_special_tokens=False)
                 if action_ids_k:
                     # In the target array, position i predicts token i+1.
                     # The model at position (obs_len - 1) predicts the first
@@ -188,7 +185,7 @@ def build_batch(
 
             if not action_spans:
                 continue
-            
+
             # Build model_input: TODO: check whether we need to render everything up to the last observation
             # (which includes all prior obs+actions), then append the last
             # step's action tokens (minus the final one for next-token shift).
@@ -247,9 +244,7 @@ def build_batch(
                     per_token_advantages[pos] = advantage
             lp_offset += len(action_ids_k)
 
-        datum = _build_datum(
-            model_input, target_tokens, per_token_logprobs, per_token_advantages
-        )
+        datum = _build_datum(model_input, target_tokens, per_token_logprobs, per_token_advantages)
         if datum is not None:
             datums.append(datum)
 
@@ -283,16 +278,11 @@ def train_step(
         return {"loss": 0.0, "n_datums": 0}
 
     adam_params = tt.AdamParams(
-        learning_rate=config.learning_rate,
-        beta1=config.beta1,
-        beta2=config.beta2,
-        eps=config.eps
+        learning_rate=config.learning_rate, beta1=config.beta1, beta2=config.beta2, eps=config.eps
     )
 
     # Submit both futures before blocking — lands in same Tinker cycle
-    fwd_bwd_future = training_client.forward_backward(
-        datums, loss_fn="importance_sampling"
-    )
+    fwd_bwd_future = training_client.forward_backward(datums, loss_fn="importance_sampling")
     optim_step_future = training_client.optim_step(adam_params)
 
     # Block and collect results

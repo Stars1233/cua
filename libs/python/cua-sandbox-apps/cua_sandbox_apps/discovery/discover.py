@@ -227,7 +227,7 @@ async def discover_software_for_group(
     If the agent submits fewer than min_new_entries new items, it is re-prompted
     up to 2 extra times to search from a different sub-angle.
     """
-    from claude_agent_sdk import query, ClaudeAgentOptions, create_sdk_mcp_server
+    from claude_agent_sdk import ClaudeAgentOptions, create_sdk_mcp_server, query
 
     submit_tool = _make_ingress_tool(catalog_path)
     ingress_server = create_sdk_mcp_server(
@@ -267,7 +267,8 @@ async def discover_software_for_group(
                 model=model,
                 mcp_servers={"ingress": ingress_server},
                 allowed_tools=[
-                    "WebSearch", "WebFetch",
+                    "WebSearch",
+                    "WebFetch",
                     "mcp__ingress__submit_apps",
                 ],
                 permission_mode="dontAsk",
@@ -285,13 +286,18 @@ async def discover_software_for_group(
                     session_id = msg.session_id
 
         except Exception as e:
-            logger.error("Discovery agent failed for %s (attempt %d): %s", occupation_group, attempt, e)
+            logger.error(
+                "Discovery agent failed for %s (attempt %d): %s", occupation_group, attempt, e
+            )
 
         added_this_attempt = _count_catalog(catalog_path) - attempt_before
         total_added += added_this_attempt
         logger.info(
             "%s attempt %d: +%d new entries (total this call: %d)",
-            occupation_group, attempt, added_this_attempt, total_added,
+            occupation_group,
+            attempt,
+            added_this_attempt,
+            total_added,
         )
 
         if total_added >= min_new_entries:
@@ -299,7 +305,10 @@ async def discover_software_for_group(
         if attempt < 2:
             logger.info(
                 "%s: only %d new entries (< %d), resuming session %s...",
-                occupation_group, total_added, min_new_entries, session_id,
+                occupation_group,
+                total_added,
+                min_new_entries,
+                session_id,
             )
 
     return total_added
@@ -323,7 +332,9 @@ async def run_discovery(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     current = _count_catalog(output_path)
-    logger.info("Starting discovery. Current catalog: %d, target: %d, model: %s", current, target, model)
+    logger.info(
+        "Starting discovery. Current catalog: %d, target: %d, model: %s", current, target, model
+    )
 
     if current >= target:
         logger.info("Already at target (%d >= %d)", current, target)
@@ -344,13 +355,14 @@ async def run_discovery(
         angle = SEARCH_ANGLES[angle_idx % len(SEARCH_ANGLES)]
         logger.info(
             "=== DISCOVERY ROUND %d (catalog: %d / %d, concurrency: %d, angle: %s) ===",
-            round_num, current, target, concurrency, angle[:40],
+            round_num,
+            current,
+            target,
+            concurrency,
+            angle[:40],
         )
 
-        tasks_to_run = [
-            (occ["soc_code"], occ["occupation_title"])
-            for occ in occupations
-        ]
+        tasks_to_run = [(occ["soc_code"], occ["occupation_title"]) for occ in occupations]
 
         sem = asyncio.Semaphore(concurrency)
 
@@ -360,7 +372,11 @@ async def run_discovery(
                 logger.info("[Round %d] Starting: %s", round_num, title)
                 try:
                     n = await discover_software_for_group(
-                        soc_code, title, output_path, model=model, search_angle=_angle,
+                        soc_code,
+                        title,
+                        output_path,
+                        model=model,
+                        search_angle=_angle,
                     )
                     logger.info("[Round %d] +%d entries for %s", round_num, n, title)
                     return (n, True)
@@ -378,7 +394,12 @@ async def run_discovery(
         current = _count_catalog(output_path)
         logger.info(
             "Round %d done: +%d entries, %d/%d agents succeeded. TOTAL: %d / %d",
-            round_num, added, successes, len(results), current, target,
+            round_num,
+            added,
+            successes,
+            len(results),
+            current,
+            target,
         )
 
         # Advance to next search angle each round
@@ -388,7 +409,9 @@ async def run_discovery(
             consecutive_zero_rounds += 1
             logger.warning(
                 "No new entries in round %d (angle: %s). Zero streak: %d",
-                round_num, angle[:40], consecutive_zero_rounds,
+                round_num,
+                angle[:40],
+                consecutive_zero_rounds,
             )
             # Give up only after exhausting all angles twice
             if consecutive_zero_rounds >= len(SEARCH_ANGLES) * 2:

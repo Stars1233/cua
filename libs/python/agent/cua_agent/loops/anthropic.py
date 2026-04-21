@@ -1816,7 +1816,7 @@ class AnthropicHostedToolsConfig(AsyncAgentConfig):
 
         # Use liteLLM acompletion
         response = await litellm.acompletion(**api_kwargs)
-        
+
         # print(f"[DEBUG][Anthropic Response] response: {response}")
 
         # Call API end hook

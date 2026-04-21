@@ -11,7 +11,7 @@ import json
 import logging
 from pathlib import Path
 
-from .shared_memory import init_memory, read_memory, append_learning
+from .shared_memory import append_learning, init_memory, read_memory
 
 logger = logging.getLogger(__name__)
 
@@ -84,9 +84,11 @@ def _already_created(apps_dir: Path) -> set[str]:
                 continue
             ext = "ps1" if os_dir.name == "windows" else "sh"
             has_install = (os_dir / f"install.{ext}").exists()
-            has_result = ((os_dir / "result.json").exists()
-                          or (os_dir / "logs" / "install-result.json").exists()
-                          or (os_dir / "logs" / "result.json").exists())  # legacy name
+            has_result = (
+                (os_dir / "result.json").exists()
+                or (os_dir / "logs" / "install-result.json").exists()
+                or (os_dir / "logs" / "result.json").exists()
+            )  # legacy name
             if has_install or has_result:
                 done.add(f"{app_dir.name}/{os_dir.name}")
     return done
@@ -177,7 +179,9 @@ async def run_orchestrator(
             app_name = entry.get("name", "unknown")
             logger.info("Creating: %s / %s", app_name, os_type)
             ok = await create_installer_from_entry(
-                entry, os_type, apps_dir,
+                entry,
+                os_type,
+                apps_dir,
                 strict_install_verify=strict_install_verify,
             )
             if ok:
@@ -200,5 +204,7 @@ async def run_orchestrator(
 
     logger.info(
         "Orchestrator complete: %d success, %d failed out of %d",
-        success, fail, len(work),
+        success,
+        fail,
+        len(work),
     )

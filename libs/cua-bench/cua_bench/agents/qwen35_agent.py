@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 @register_agent("qwen35")
 class Qwen35Agent(BaseAgent):
     """Agent implementation using a Qwen3.5 model via the CUA Computer Agent SDK."""
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.model = kwargs.get("model", "openai/qwen35-4b")
@@ -131,7 +131,7 @@ class Qwen35Agent(BaseAgent):
             "move": move,
             "scroll": scroll,
             "drag": drag,
-            "wait": wait
+            "wait": wait,
         }
 
     async def perform_task(

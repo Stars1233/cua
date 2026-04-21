@@ -79,6 +79,7 @@ def deduplicate(
 
     logger.info(
         "Dedup complete: %d unique entries (%d duplicates removed)",
-        len(seen), duplicates,
+        len(seen),
+        duplicates,
     )
     return len(seen)

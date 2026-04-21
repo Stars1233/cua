@@ -377,9 +377,7 @@ class BaseAutomationHandler(ABC):
             return {"success": False, "error": str(e)}
 
     # Command Execution
-    async def run_command(
-        self, command: str, timeout: Optional[float] = None
-    ) -> Dict[str, Any]:
+    async def run_command(self, command: str, timeout: Optional[float] = None) -> Dict[str, Any]:
         """Run a shell command locally and return its output.
 
         When IS_CUA_ANDROID env var is set, routes the command through
@@ -414,9 +412,7 @@ class BaseAutomationHandler(ABC):
                 if timeout is None:
                     stdout, stderr = await process.communicate()
                 else:
-                    stdout, stderr = await asyncio.wait_for(
-                        process.communicate(), timeout=timeout
-                    )
+                    stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
             except asyncio.TimeoutError:
                 process.kill()
                 return {

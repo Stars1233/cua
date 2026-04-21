@@ -266,7 +266,7 @@ class Sandbox:
         self.terminal = Terminal(transport)
         self.mobile = Mobile(transport)
         self.tunnel = Tunnel(transport)
-        _os = (_runtime_info.environment if _runtime_info and _runtime_info.environment else "linux")
+        _os = _runtime_info.environment if _runtime_info and _runtime_info.environment else "linux"
         self.apps = Apps(transport, os_type=_os)
 
     async def _connect(self) -> None:

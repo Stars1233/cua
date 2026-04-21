@@ -16,7 +16,6 @@ These tests pin the new behavior:
 """
 
 import pytest
-
 from cua_sandbox.transport.http import HTTPTransport
 
 
@@ -32,9 +31,7 @@ class TestParseSSESurfacesFailures:
 
     def test_explicit_error_field_preserved_verbatim(self):
         with pytest.raises(RuntimeError, match=r"Remote error: boom"):
-            HTTPTransport._parse_sse(
-                _sse('{"success": false, "error": "boom"}')
-            )
+            HTTPTransport._parse_sse(_sse('{"success": false, "error": "boom"}'))
 
     def test_shell_failure_surfaces_return_code_and_stderr(self):
         with pytest.raises(RuntimeError) as exc:

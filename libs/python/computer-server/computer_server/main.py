@@ -69,6 +69,7 @@ def _unavailable_status_code() -> Optional[int]:
     except ValueError:
         return DEFAULT_UNAVAILABLE_STATUS_CODE
 
+
 try:
     from cua_agent import ComputerAgent
 
@@ -104,6 +105,7 @@ app = FastAPI(
     lifespan=_mcp_http_app.lifespan if _mcp_http_app else None,
     redirect_slashes=False,
 )
+
 
 class UnavailableWithoutContainerMiddleware:
     """ASGI middleware that rejects all requests when CONTAINER_NAME is required but unset.
@@ -328,9 +330,7 @@ if hasattr(automation_handler, "multitouch_gesture"):
 class AuthenticationManager:
     def __init__(self):
         self.container_name = os.environ.get("CONTAINER_NAME")
-        self.api_base_url = os.environ.get(
-            "CUA_BASE_URL_AUTH", "https://www.cua.ai"
-        ).rstrip("/")
+        self.api_base_url = os.environ.get("CUA_BASE_URL_AUTH", "https://www.cua.ai").rstrip("/")
 
     async def auth(self, container_name: str, api_key: str) -> bool:
         """Authenticate container name and API key against the TryCUA API.

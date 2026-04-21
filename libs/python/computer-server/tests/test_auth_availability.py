@@ -16,10 +16,9 @@ These tests verify two things:
 from __future__ import annotations
 
 import pytest
+from fastapi.testclient import TestClient
 
 try:
-    from fastapi.testclient import TestClient
-
     from computer_server.main import _unavailable_status_code, app
 except Exception as import_error:  # pragma: no cover - environment-dependent
     pytest.skip(

@@ -9,11 +9,13 @@ import os
 import time
 
 import pytest
-
 from cua_sandbox import Image, Sandbox
 
 pytestmark = pytest.mark.asyncio
-P = lambda *a, **kw: print(*a, **kw, flush=True)
+
+
+def P(*a, **kw):
+    print(*a, **kw, flush=True)
 
 
 def _has_env() -> bool:
@@ -74,7 +76,7 @@ async def test_windows_all_restore_modes():
             P(f"        Screenshot: {len(fork2_screen)} bytes")
 
     P(f"\n  {'='*50}")
-    P(f"  TIMING COMPARISON")
+    P("  TIMING COMPARISON")
     P(f"  {'='*50}")
     P(f"  Image.windows() create:     {results['create']:6.1f}s")
     P(f"  snapshot(stateful=False):    {results['snapshot']:6.2f}s")

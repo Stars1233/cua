@@ -125,9 +125,7 @@ class Image:
     # ── Constructors ─────────────────────────────────────────────────────
 
     @classmethod
-    def linux(
-        cls, distro: str = "ubuntu", version: str = "24.04", kind: str = "vm"
-    ) -> Image:
+    def linux(cls, distro: str = "ubuntu", version: str = "24.04", kind: str = "vm") -> Image:
         """Linux image. Defaults to 'vm' (QEMU). Use kind='container' for Docker/XFCE."""
         return cls(os_type="linux", distro=distro, version=version, kind=kind)
 

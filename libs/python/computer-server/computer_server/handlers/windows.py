@@ -709,9 +709,7 @@ class WindowsAutomationHandler(BaseAutomationHandler):
     # Clipboard inherited from BaseAutomationHandler
 
     # Command Execution (Windows override for multi-encoding support)
-    async def run_command(
-        self, command: str, timeout: Optional[float] = None
-    ) -> Dict[str, Any]:
+    async def run_command(self, command: str, timeout: Optional[float] = None) -> Dict[str, Any]:
         """Execute a shell command asynchronously.
 
         Args:
@@ -755,9 +753,7 @@ class WindowsAutomationHandler(BaseAutomationHandler):
                 if timeout is None:
                     stdout, stderr = await process.communicate()
                 else:
-                    stdout, stderr = await asyncio.wait_for(
-                        process.communicate(), timeout=timeout
-                    )
+                    stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
             except asyncio.TimeoutError:
                 process.kill()
                 return {

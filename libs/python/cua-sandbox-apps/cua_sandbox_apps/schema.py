@@ -44,9 +44,7 @@ class AppEntry(BaseModel):
     soc_groups: list[str] = Field(default_factory=list)
 
     # Availability
-    os_support: list[Literal["linux", "windows", "macos", "android"]] = Field(
-        default_factory=list
-    )
+    os_support: list[Literal["linux", "windows", "macos", "android"]] = Field(default_factory=list)
     # True if a CUA agent would need to pay (credit card / subscription) to
     # fully exercise the app's core UI. Free tiers, trials, OSS = False.
     requires_payment: bool = False

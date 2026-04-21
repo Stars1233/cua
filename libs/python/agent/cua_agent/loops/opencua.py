@@ -348,9 +348,7 @@ class OpenCUAConfig(ComposedGroundedConfig):
                     # Rescale coordinates if present
                     coord = args.get("coordinate")
                     if coord and isinstance(coord, (list, tuple)) and len(coord) >= 2:
-                        rx, ry = _rescale(
-                            int(round(float(coord[0]))), int(round(float(coord[1])))
-                        )
+                        rx, ry = _rescale(int(round(float(coord[0]))), int(round(float(coord[1]))))
                         args = {**args, "coordinate": [rx, ry]}
 
                     # Convert Qwen format to Computer Calls format

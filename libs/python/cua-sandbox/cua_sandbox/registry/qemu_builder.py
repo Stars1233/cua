@@ -58,7 +58,9 @@ class QEMUImageConfig:
     disk_format: str = "qcow2"
     tpm: bool = True
     architecture: str = "x86_64"
-    qemu_bin: Optional[str] = None  # Custom QEMU binary path (e.g. /opt/incus/bin/qemu-system-x86_64)
+    qemu_bin: Optional[str] = (
+        None  # Custom QEMU binary path (e.g. /opt/incus/bin/qemu-system-x86_64)
+    )
     display: dict = field(default_factory=lambda: {"width": 1920, "height": 1080})
 
 
@@ -286,7 +288,6 @@ def _build_image_wsl2(
 # ── Full build ──────────────────────────────────────────────────────────────
 
 
-
 def build_image(
     config: Optional[QEMUImageConfig] = None,
     *,
@@ -331,6 +332,7 @@ def build_image(
         qemu = config.qemu_bin
     else:
         from cua_sandbox.runtime.qemu_installer import qemu_bin
+
         qemu = qemu_bin(config.architecture)
     qemu_dir = Path(qemu).parent
 
@@ -778,7 +780,9 @@ def main():
 
     # build
     build_p = sub.add_parser("build", help="Build a Windows VM image")
-    build_p.add_argument("--windows-version", default="11", help="Windows version (10, 11, server-2022, server-2025)")
+    build_p.add_argument(
+        "--windows-version", default="11", help="Windows version (10, 11, server-2022, server-2025)"
+    )
     build_p.add_argument("--iso-path", help="Path to Windows ISO (skip download)")
     build_p.add_argument("--disk-size", type=int, default=64, help="Disk size in GB")
     build_p.add_argument("--ram", type=int, default=8192, help="RAM in MB")
@@ -789,7 +793,9 @@ def main():
     build_p.add_argument(
         "--wsl2", action="store_true", help="Run QEMU inside WSL2 with KVM acceleration"
     )
-    build_p.add_argument("--qemu-bin", help="Custom QEMU binary path (e.g. /opt/incus/bin/qemu-system-x86_64)")
+    build_p.add_argument(
+        "--qemu-bin", help="Custom QEMU binary path (e.g. /opt/incus/bin/qemu-system-x86_64)"
+    )
 
     # push
     push_p = sub.add_parser("push", help="Push a qcow2 disk as OCI image")

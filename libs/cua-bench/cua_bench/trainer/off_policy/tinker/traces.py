@@ -54,9 +54,7 @@ def _extract_action_text(output_items: list[dict]) -> str:
         elif kind == "computer_call":
             parts.append(json.dumps({"action": item.get("action")}))
         elif kind == "tool_use":
-            parts.append(
-                json.dumps({"tool": item.get("name"), "input": item.get("input")})
-            )
+            parts.append(json.dumps({"tool": item.get("name"), "input": item.get("input")}))
     # Fallback: if nothing matched, serialise the raw list so we always have
     # *something* to tokenise.
     return "\n".join(parts) if parts else json.dumps(output_items)
@@ -72,6 +70,7 @@ def _as_pil(img) -> Optional[Image.Image]:
     # as a raw buffer rather than a decoded PIL image.
     if isinstance(img, dict) and "bytes" in img:
         import io
+
         return Image.open(io.BytesIO(img["bytes"])).convert("RGB")
     return None
 
@@ -143,7 +142,9 @@ def load_episode(trace_dir: str | Path) -> Optional[Episode]:
         if post_screenshot is not None:
             prev_screenshot = post_screenshot
 
-    trajectory_id = ds[0]["trajectory_id"] if len(ds) > 0 and ds[0]["trajectory_id"] is not None else ""
+    trajectory_id = (
+        ds[0]["trajectory_id"] if len(ds) > 0 and ds[0]["trajectory_id"] is not None else ""
+    )
     assert isinstance(trajectory_id, str), f"trajectory_id is not a string: {trajectory_id}"
 
     return Episode(

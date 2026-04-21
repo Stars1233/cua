@@ -639,7 +639,7 @@ class ComputerAgent:
         for callback in self.callbacks:
             if hasattr(callback, "on_run_continue"):
                 should_continue = await callback.on_run_continue(kwargs, old_items, new_items)
-                if not should_continue: 
+                if not should_continue:
                     return False
         return True
 
@@ -1030,7 +1030,7 @@ class ComputerAgent:
 
             # Add agent response to new_items
             new_items += result.get("output")
-            
+
             # Get output call ids
             output_call_ids = get_output_call_ids(result.get("output", []))
 
@@ -1046,7 +1046,6 @@ class ComputerAgent:
                         if pi_type == "computer_call_output":
                             output = pi.get("output", {})
                             has_image = "image_url" in output if isinstance(output, dict) else False
-                       
 
                 new_items += partial_items
 

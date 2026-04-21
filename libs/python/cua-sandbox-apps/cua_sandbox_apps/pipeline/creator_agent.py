@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from claude_agent_sdk import query, ClaudeAgentOptions, create_sdk_mcp_server
+from claude_agent_sdk import ClaudeAgentOptions, create_sdk_mcp_server, query
 
 from .sandbox_tools import make_sandbox_tools
 
@@ -60,6 +60,7 @@ def _lint_fail_fast(script: str) -> list[str]:
     if "pipefail" not in head:
         missing.append("`set -o pipefail` (surface errors in pipelines)")
     return missing
+
 
 CREATOR_SYSTEM_PROMPT = """\
 You are an app installer agent. Your job is to create working install and launch
@@ -191,15 +192,25 @@ def _save_transcript(session_id: str | None, logs_dir: Path, app_id: str, target
     # Convert to HTML
     try:
         subprocess.run(
-            ["claude-code-transcripts", "json", str(dst), "-o", str(logs_dir / "install-transcript")],
-            capture_output=True, text=True, timeout=60,
+            [
+                "claude-code-transcripts",
+                "json",
+                str(dst),
+                "-o",
+                str(logs_dir / "install-transcript"),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
         logger.info("Generated HTML transcript for %s/%s", app_id, target_os)
     except (subprocess.SubprocessError, FileNotFoundError) as e:
         logger.warning("Failed to generate HTML transcript: %s", e)
 
 
-async def _verify_screenshot(screenshot_path: Path, app_name: str, is_cli: bool = False) -> tuple[bool, str]:
+async def _verify_screenshot(
+    screenshot_path: Path, app_name: str, is_cli: bool = False
+) -> tuple[bool, str]:
     """Use Bedrock haiku vision to check if the app is visible in the screenshot.
 
     Returns (passed, reason).
@@ -240,13 +251,18 @@ async def _verify_screenshot(screenshot_path: Path, app_name: str, is_cli: bool 
     body = {
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": 256,
-        "messages": [{
-            "role": "user",
-            "content": [
-                {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": img_b64}},
-                {"type": "text", "text": verification_text},
-            ],
-        }],
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {"type": "base64", "media_type": media_type, "data": img_b64},
+                    },
+                    {"type": "text", "text": verification_text},
+                ],
+            }
+        ],
     }
 
     try:
@@ -282,23 +298,25 @@ async def _verify_metadata_script(script: str, app_name: str) -> tuple[bool, str
     body = {
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": 256,
-        "messages": [{
-            "role": "user",
-            "content": (
-                f"Review this metadata extraction script for the app \"{app_name}\". "
-                f"The script is supposed to dynamically discover the binary path, display name, "
-                f"version, icons, and desktop entries by inspecting the actual installed artifacts "
-                f"(e.g. using `which`, `dpkg -L`, `rpm -ql`, reading .desktop files, parsing "
-                f"package manager output, checking /usr/share/applications, etc.).\n\n"
-                f"Does the script ACTUALLY inspect installed artifacts to extract metadata, "
-                f"or does it just hardcode/echo static values?\n\n"
-                f"Script:\n```\n{script}\n```\n\n"
-                f"Reply with exactly one line:\n"
-                f"PASS: <brief description of how it inspects artifacts>\n"
-                f"or\n"
-                f"FAIL: <what is hardcoded and how it should dynamically discover it instead>"
-            ),
-        }],
+        "messages": [
+            {
+                "role": "user",
+                "content": (
+                    f'Review this metadata extraction script for the app "{app_name}". '
+                    f"The script is supposed to dynamically discover the binary path, display name, "
+                    f"version, icons, and desktop entries by inspecting the actual installed artifacts "
+                    f"(e.g. using `which`, `dpkg -L`, `rpm -ql`, reading .desktop files, parsing "
+                    f"package manager output, checking /usr/share/applications, etc.).\n\n"
+                    f"Does the script ACTUALLY inspect installed artifacts to extract metadata, "
+                    f"or does it just hardcode/echo static values?\n\n"
+                    f"Script:\n```\n{script}\n```\n\n"
+                    f"Reply with exactly one line:\n"
+                    f"PASS: <brief description of how it inspects artifacts>\n"
+                    f"or\n"
+                    f"FAIL: <what is hardcoded and how it should dynamically discover it instead>"
+                ),
+            }
+        ],
     }
 
     try:
@@ -320,7 +338,14 @@ async def _verify_metadata_script(script: str, app_name: str) -> tuple[bool, str
         return False, f"Verification error: {e}"
 
 
-def _make_submit_tool(result_holder: list, output_dir: Path | None, app_name: str, sandbox_registry: dict[str, Any] | None = None, target_os: str = "linux", strict_install_verify: bool = True):
+def _make_submit_tool(
+    result_holder: list,
+    output_dir: Path | None,
+    app_name: str,
+    sandbox_registry: dict[str, Any] | None = None,
+    target_os: str = "linux",
+    strict_install_verify: bool = True,
+):
     """MCP tool that verifies the screenshot before accepting the submission."""
     from claude_agent_sdk import tool
 
@@ -337,17 +362,41 @@ def _make_submit_tool(result_holder: list, output_dir: Path | None, app_name: st
                     "properties": {
                         "app_id": {"type": "string"},
                         "os": {"type": "string"},
-                        "sandbox_name": {"type": "string", "description": "Name of the sandbox to verify screenshot from"},
-                        "install_script": {"type": "string", "description": "Contents of the install script"},
-                        "launch_script": {"type": "string", "description": "Contents of the launch script"},
-                        "extract_metadata_script": {"type": "string", "description": "Contents of the extract_metadata.sh/.ps1 script"},
-                        "metadata": {"type": "object", "description": "JSON output from extract_metadata script with binary_path, display_name, icon_paths, version"},
+                        "sandbox_name": {
+                            "type": "string",
+                            "description": "Name of the sandbox to verify screenshot from",
+                        },
+                        "install_script": {
+                            "type": "string",
+                            "description": "Contents of the install script",
+                        },
+                        "launch_script": {
+                            "type": "string",
+                            "description": "Contents of the launch script",
+                        },
+                        "extract_metadata_script": {
+                            "type": "string",
+                            "description": "Contents of the extract_metadata.sh/.ps1 script",
+                        },
+                        "metadata": {
+                            "type": "object",
+                            "description": "JSON output from extract_metadata script with binary_path, display_name, icon_paths, version",
+                        },
                         "install_exit_code": {"type": "integer"},
                         "install_stdout": {"type": "string"},
                         "verification_command": {"type": "string"},
-                        "download_available": {"type": "boolean", "description": "False if no public download exists (quote/sales required)"},
-                        "app_type_detected": {"type": "string", "description": "Set to 'library' or 'webapp' for early exit"},
-                        "is_cli": {"type": "boolean", "description": "True if this is a CLI/TUI tool (terminal screenshot accepted)"},
+                        "download_available": {
+                            "type": "boolean",
+                            "description": "False if no public download exists (quote/sales required)",
+                        },
+                        "app_type_detected": {
+                            "type": "string",
+                            "description": "Set to 'library' or 'webapp' for early exit",
+                        },
+                        "is_cli": {
+                            "type": "boolean",
+                            "description": "True if this is a CLI/TUI tool (terminal screenshot accepted)",
+                        },
                         "notes": {"type": "string"},
                     },
                     "required": ["app_id", "os", "install_exit_code"],
@@ -370,12 +419,24 @@ def _make_submit_tool(result_holder: list, output_dir: Path | None, app_name: st
             else:
                 result["download_available"] = False
             result_holder.append(result)
-            logger.info("Early exit for %s/%s: %s — %s",
-                        result.get("app_id"), result.get("os"), detected_type or "no-download", reason)
-            return {"content": [{"type": "text", "text": (
-                f"OK: recorded for {result.get('app_id')} on {result.get('os')}. "
-                f"Type: {detected_type or 'no-download'}. Reason: {reason}"
-            )}]}
+            logger.info(
+                "Early exit for %s/%s: %s — %s",
+                result.get("app_id"),
+                result.get("os"),
+                detected_type or "no-download",
+                reason,
+            )
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            f"OK: recorded for {result.get('app_id')} on {result.get('os')}. "
+                            f"Type: {detected_type or 'no-download'}. Reason: {reason}"
+                        ),
+                    }
+                ]
+            }
 
         if not sandbox_name:
             return {"content": [{"type": "text", "text": "ERROR: sandbox_name is required."}]}
@@ -403,12 +464,18 @@ def _make_submit_tool(result_holder: list, output_dir: Path | None, app_name: st
         # ── Check 2: metadata extraction produced valid results ──
         metadata = result.get("metadata")
         if not metadata or not isinstance(metadata, dict):
-            failures.append("metadata is missing. Run your extract_metadata script and include its JSON output.")
+            failures.append(
+                "metadata is missing. Run your extract_metadata script and include its JSON output."
+            )
         else:
             if not metadata.get("binary_path"):
-                failures.append("metadata.binary_path is missing — the script must find the installed binary path.")
+                failures.append(
+                    "metadata.binary_path is missing — the script must find the installed binary path."
+                )
             if not metadata.get("display_name"):
-                failures.append("metadata.display_name is missing — the script must extract the app's display name.")
+                failures.append(
+                    "metadata.display_name is missing — the script must extract the app's display name."
+                )
 
         # ── Check 3: install_script must parse (bash -n) and run end-to-end in
         # a clean sandbox. Catches cases where the agent debugged interactively
@@ -422,7 +489,7 @@ def _make_submit_tool(result_holder: list, output_dir: Path | None, app_name: st
                 rendered = "; ".join(f"line {ln}: {txt.strip()}" for ln, txt in masks[:5])
                 failures.append(
                     f"install_script ERROR-MASKING: the install must FAIL FAST on any "
-                    f"error — strip all `|| true`, `|| :`, `|| echo \"\"` etc. "
+                    f'error — strip all `|| true`, `|| :`, `|| echo ""` etc. '
                     f"If a command is genuinely optional, use a real `if` guard and "
                     f"log the decision. Violations: {rendered}"
                 )
@@ -430,10 +497,16 @@ def _make_submit_tool(result_holder: list, output_dir: Path | None, app_name: st
             if missing_ff:
                 failures.append(
                     "install_script missing fail-fast pragmas near the top: "
-                    + ", ".join(missing_ff) + ". Add `set -euo pipefail` to the "
+                    + ", ".join(missing_ff)
+                    + ". Add `set -euo pipefail` to the "
                     "header so unchecked failures and undefined vars abort the script."
                 )
-        if strict_install_verify and install_script and target_os != "windows" and sandbox_registry is not None:
+        if (
+            strict_install_verify
+            and install_script
+            and target_os != "windows"
+            and sandbox_registry is not None
+        ):
             sb = sandbox_registry.get(sandbox_name)
             if sb is not None:
                 await sb.files.write_text("/tmp/_verify_install.sh", install_script)
@@ -445,10 +518,18 @@ def _make_submit_tool(result_holder: list, output_dir: Path | None, app_name: st
                 else:
                     # Full end-to-end re-run in a fresh sandbox to catch idempotency
                     # regressions that the agent's iterative debugging masked.
-                    from cua_sandbox import Image as _Image, Sandbox as _Sandbox
-                    img_map = {"linux": _Image.linux, "macos": _Image.macos, "android": _Image.android}
+                    from cua_sandbox import Image as _Image
+                    from cua_sandbox import Sandbox as _Sandbox
+
+                    img_map = {
+                        "linux": _Image.linux,
+                        "macos": _Image.macos,
+                        "android": _Image.android,
+                    }
                     img = img_map[target_os]()
-                    verify_sb = await _Sandbox.create(img, local=True, name=f"verify-{sandbox_name}")
+                    verify_sb = await _Sandbox.create(
+                        img, local=True, name=f"verify-{sandbox_name}"
+                    )
                     try:
                         await verify_sb.files.write_text("/tmp/install.sh", install_script)
                         await verify_sb.shell.run("chmod +x /tmp/install.sh")
@@ -458,6 +539,7 @@ def _make_submit_tool(result_holder: list, output_dir: Path | None, app_name: st
                             background=True,
                         )
                         import asyncio as _aio
+
                         done = False
                         for _ in range(180):  # up to 30 min
                             await _aio.sleep(10)
@@ -476,7 +558,9 @@ def _make_submit_tool(result_holder: list, output_dir: Path | None, app_name: st
                                 done = True
                                 break
                         if not done:
-                            failures.append("install_script timed out in fresh-sandbox verify (30 min)")
+                            failures.append(
+                                "install_script timed out in fresh-sandbox verify (30 min)"
+                            )
                     finally:
                         try:
                             await verify_sb.destroy()
@@ -486,7 +570,9 @@ def _make_submit_tool(result_holder: list, output_dir: Path | None, app_name: st
         # ── Check 4: extract_metadata_script was provided and actually inspects artifacts ──
         extract_script = result.get("extract_metadata_script", "")
         if not extract_script:
-            failures.append("extract_metadata_script is missing. Write and include the metadata extraction script.")
+            failures.append(
+                "extract_metadata_script is missing. Write and include the metadata extraction script."
+            )
         else:
             # Verify the script actually inspects artifacts rather than hardcoding values
             script_ok, script_reason = await _verify_metadata_script(extract_script, app_name)
@@ -495,10 +581,17 @@ def _make_submit_tool(result_holder: list, output_dir: Path | None, app_name: st
 
         if failures:
             checklist = "\n".join(f"  - {f}" for f in failures)
-            return {"content": [{"type": "text", "text": (
-                f"CRITERIA NOT MET:\n{checklist}\n\n"
-                f"Fix the issues above, then call submit_result again."
-            )}]}
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            f"CRITERIA NOT MET:\n{checklist}\n\n"
+                            f"Fix the issues above, then call submit_result again."
+                        ),
+                    }
+                ]
+            }
 
         # All checks passed — extract icons from sandbox before it gets deleted
         icon_paths = metadata.get("icon_paths", []) if metadata else []
@@ -508,7 +601,9 @@ def _make_submit_tool(result_holder: list, output_dir: Path | None, app_name: st
             for icon_path in icon_paths:
                 try:
                     # Get icon dimensions and read file from sandbox
-                    r = await sb.shell.run(f"file {icon_path} 2>/dev/null | grep -oP '\\d+ x \\d+' | head -1")
+                    r = await sb.shell.run(
+                        f"file {icon_path} 2>/dev/null | grep -oP '\\d+ x \\d+' | head -1"
+                    )
                     size = "unknown"
                     if r.returncode == 0 and r.stdout.strip():
                         dims = r.stdout.strip().split(" x ")
@@ -517,7 +612,8 @@ def _make_submit_tool(result_holder: list, output_dir: Path | None, app_name: st
                     # Fallback: try to get size from path (e.g. /usr/share/icons/hicolor/256x256/...)
                     if size == "unknown":
                         import re
-                        m = re.search(r'(\d+)x\d+', icon_path)
+
+                        m = re.search(r"(\d+)x\d+", icon_path)
                         if m:
                             size = m.group(1)
                     r = await sb.shell.run(f"base64 {icon_path} 2>/dev/null")
@@ -534,12 +630,19 @@ def _make_submit_tool(result_holder: list, output_dir: Path | None, app_name: st
         result["verification_passed"] = True
         result["extracted_icons"] = extracted_icons
         result_holder.append(result)
-        return {"content": [{"type": "text", "text": (
-            f"OK: result accepted for {result.get('app_id')} on {result.get('os')}.\n"
-            f"Screenshot: {result.get('screenshot_verification', 'verified')}\n"
-            f"Metadata: binary={metadata.get('binary_path')}, name={metadata.get('display_name')}, "
-            f"version={metadata.get('version')}, icons={len(extracted_icons)} extracted"
-        )}]}
+        return {
+            "content": [
+                {
+                    "type": "text",
+                    "text": (
+                        f"OK: result accepted for {result.get('app_id')} on {result.get('os')}.\n"
+                        f"Screenshot: {result.get('screenshot_verification', 'verified')}\n"
+                        f"Metadata: binary={metadata.get('binary_path')}, name={metadata.get('display_name')}, "
+                        f"version={metadata.get('version')}, icons={len(extracted_icons)} extracted"
+                    ),
+                }
+            ]
+        }
 
     return submit_result
 
@@ -570,7 +673,9 @@ async def create_app_installer(
     agent_logger.setLevel(logging.INFO)
     agent_log_path = logs_dir / "install-agent.log"
     file_handler = logging.FileHandler(str(agent_log_path), mode="w", encoding="utf-8")
-    file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    )
     agent_logger.addHandler(file_handler)
 
     # Per-agent sandbox registry — no cross-agent interference
@@ -580,7 +685,9 @@ async def create_app_installer(
     sandbox_tools = make_sandbox_tools(evidence_dir=logs_dir, sandbox_registry=my_sandboxes)
     result_holder: list = []
     submit_tool = _make_submit_tool(
-        result_holder, logs_dir, app_name,
+        result_holder,
+        logs_dir,
+        app_name,
         sandbox_registry=my_sandboxes,
         target_os=target_os,
         strict_install_verify=strict_install_verify,
@@ -591,7 +698,8 @@ async def create_app_installer(
 
     # Tool names for allowed_tools — NO Bash
     tool_names = [
-        "WebSearch", "WebFetch",
+        "WebSearch",
+        "WebFetch",
         "mcp__sandbox__create_sandbox",
         "mcp__sandbox__sandbox_run",
         "mcp__sandbox__sandbox_write",
@@ -656,11 +764,14 @@ async def create_app_installer(
         if result.get("download_available") is False:
             app_os_dir.mkdir(parents=True, exist_ok=True)
             (app_os_dir / "result.json").write_text(
-                json.dumps(result, indent=2, default=str, ensure_ascii=True), encoding="utf-8")
+                json.dumps(result, indent=2, default=str, ensure_ascii=True), encoding="utf-8"
+            )
             app_json = apps_dir / app_id / "app.json"
             if not app_json.exists():
                 app_json.write_text(json.dumps(app_entry, indent=2, default=str), encoding="utf-8")
-            logger.info("Recorded %s/%s as not downloadable: %s", app_id, target_os, result.get("notes"))
+            logger.info(
+                "Recorded %s/%s as not downloadable: %s", app_id, target_os, result.get("notes")
+            )
             return result
 
         # Write scripts to disk
@@ -682,20 +793,26 @@ async def create_app_installer(
         metadata = result.get("metadata")
         if metadata:
             (app_os_dir / "metadata.json").write_text(
-                json.dumps(metadata, indent=2, default=str, ensure_ascii=True), encoding="utf-8")
+                json.dumps(metadata, indent=2, default=str, ensure_ascii=True), encoding="utf-8"
+            )
 
         # Write full result to logs
         (logs_dir / "install-result.json").write_text(
-            json.dumps(result, indent=2, default=str, ensure_ascii=True), encoding="utf-8")
+            json.dumps(result, indent=2, default=str, ensure_ascii=True), encoding="utf-8"
+        )
 
         # Write app.json at the app level (shared across OS targets)
         app_json = apps_dir / app_id / "app.json"
         if not app_json.exists():
             app_json.write_text(json.dumps(app_entry, indent=2, default=str), encoding="utf-8")
 
-        logger.info("Created installer for %s/%s (verified=%s, screenshot=%s)",
-                     app_id, target_os, result.get("verification_passed"),
-                     result.get("screenshot_verification", "n/a"))
+        logger.info(
+            "Created installer for %s/%s (verified=%s, screenshot=%s)",
+            app_id,
+            target_os,
+            result.get("verification_passed"),
+            result.get("screenshot_verification", "n/a"),
+        )
         return result
 
     logger.warning("No result from creator agent for %s/%s", app_id, target_os)
@@ -712,6 +829,9 @@ async def create_installer_from_entry(
 ) -> dict | None:
     """Convenience wrapper — create installer from a catalog entry dict."""
     return await create_app_installer(
-        entry, target_os, apps_dir, model=model,
+        entry,
+        target_os,
+        apps_dir,
+        model=model,
         strict_install_verify=strict_install_verify,
     )

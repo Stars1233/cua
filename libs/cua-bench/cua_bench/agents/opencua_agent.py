@@ -151,7 +151,7 @@ class OpenCUAAgent(BaseAgent):
             ) from e
 
         instruction = self._render_instruction(task_description)
-        
+
         print(f"Instruction: {instruction}")
 
         trajectory_dir = None
@@ -188,7 +188,7 @@ class OpenCUAAgent(BaseAgent):
             ),
             **extra_kwargs,
         )
-        
+
         print(f"OpenCUA Agent initialized with model: {composed_model}")
 
         total_usage = {
@@ -197,13 +197,11 @@ class OpenCUAAgent(BaseAgent):
             "total_tokens": 0,
             "response_cost": 0.0,
         }
-        
-        last_exc: BaseException | None = None
-        
+
         try:
             step = 0
             task_completed = False
-            
+
             async for result in agent.run(instruction):
                 sys.stdout.flush()
                 step += 1

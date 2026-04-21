@@ -27,10 +27,10 @@ def _find_app_install_script(app_id: str, os_type: str) -> str | None:
     ext = _OS_EXT.get(os_type, "sh")
     # Try cua_sandbox_apps package path first
     try:
-        import importlib.resources
         from pathlib import Path
 
         import cua_sandbox_apps
+
         apps_dir = Path(cua_sandbox_apps.__file__).parent / "apps"
         script_path = apps_dir / app_id / os_type / f"install.{ext}"
         if script_path.exists():
@@ -47,6 +47,7 @@ def _find_app_launch_script(app_id: str, os_type: str) -> str | None:
         from pathlib import Path
 
         import cua_sandbox_apps
+
         apps_dir = Path(cua_sandbox_apps.__file__).parent / "apps"
         script_path = apps_dir / app_id / os_type / f"launch.{ext}"
         if script_path.exists():
@@ -271,17 +272,15 @@ class LayerExecutor:
     async def _exec_app_install(self, layer: dict) -> dict:
         """Install an app from cua-sandbox-apps. Reads its install.sh and runs it."""
         app_id = layer["app_id"]
-        try:
-            from cua_sandbox_apps.pipeline.task_creator_agent import _resolve_app_scripts
-        except ImportError:
-            # cua-sandbox-apps not installed — try to locate the script file directly
-            pass
         # Locate the install script from the apps catalog
         script = _find_app_install_script(app_id, self.os_type)
         if script is None:
-            return {"success": False, "return_code": 1,
-                    "stderr": f"No install script found for app '{app_id}' on {self.os_type}. "
-                              f"Install cua-sandbox-apps or run 'cua-sandbox-apps generate' first."}
+            return {
+                "success": False,
+                "return_code": 1,
+                "stderr": f"No install script found for app '{app_id}' on {self.os_type}. "
+                f"Install cua-sandbox-apps or run 'cua-sandbox-apps generate' first.",
+            }
         return await self.run_command(f"bash -c {_sh_quote(script)}", timeout=900)
 
     async def _exec_expose(self, layer: dict) -> dict:

@@ -206,14 +206,20 @@ class Qwen3VLAgent(BaseAgent):
                         action = out_item.get("action", {})
                         print(f"  [{idx}] computer_call: action={action}")
                     elif item_type == "function_call":
-                        print(f"  [{idx}] function_call: name={out_item.get('name')}, args={out_item.get('arguments')}")
+                        print(
+                            f"  [{idx}] function_call: name={out_item.get('name')}, args={out_item.get('arguments')}"
+                        )
                     elif item_type == "computer_call_output":
                         output = out_item.get("output", {})
                         has_img = "image_url" in output if isinstance(output, dict) else False
                         print(f"  [{idx}] computer_call_output: has_screenshot={has_img}")
                     elif item_type == "message":
                         content = out_item.get("content", [])
-                        texts = [c.get("text", "") for c in content if isinstance(c, dict) and c.get("text")]
+                        texts = [
+                            c.get("text", "")
+                            for c in content
+                            if isinstance(c, dict) and c.get("text")
+                        ]
                         print(f"  [{idx}] message: {' '.join(texts)[:200]}")
                     else:
                         print(f"  [{idx}] {item_type}: {str(out_item)[:200]}")

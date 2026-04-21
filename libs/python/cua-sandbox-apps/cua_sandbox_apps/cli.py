@@ -66,15 +66,22 @@ def discover_onet(output: str | None) -> None:
 @click.option("--model", type=str, default="haiku", help="Claude model (haiku, sonnet, opus)")
 @click.option("--max-parallel", type=int, default=22, help="Max parallel agents")
 @click.option("--start-angle", type=int, default=0, help="Search angle index to start from (0-7)")
-def discover_software(input_path: str | None, output: str | None, target: int, model: str, max_parallel: int, start_angle: int) -> None:
+def discover_software(
+    input_path: str | None,
+    output: str | None,
+    target: int,
+    model: str,
+    max_parallel: int,
+    start_angle: int,
+) -> None:
     """Discover software per occupation group using Claude agents with WebSearch.
 
     All 22 occupation groups run fully in parallel. Each agent gets WebSearch
     and a submit_apps tool to ingest entries. Outer loop re-prompts until target.
     Fully resumable — deduplicates on ingress.
     """
-    from .discovery.onet import read_jsonl
     from .discovery.discover import run_discovery
+    from .discovery.onet import read_jsonl
 
     inp = Path(input_path) if input_path else DEFAULT_DATA_DIR / "occupations.jsonl"
     out = Path(output) if output else DEFAULT_DATA_DIR / "raw_software.jsonl"
@@ -84,8 +91,19 @@ def discover_software(input_path: str | None, output: str | None, target: int, m
         raise SystemExit(1)
 
     occupations = read_jsonl(inp)
-    click.echo(f"Discovery: {len(occupations)} groups, target={target}, model={model}, max_parallel={max_parallel}, start_angle={start_angle}")
-    asyncio.run(run_discovery(occupations, out, target=target, model=model, max_parallel=max_parallel, start_angle=start_angle))
+    click.echo(
+        f"Discovery: {len(occupations)} groups, target={target}, model={model}, max_parallel={max_parallel}, start_angle={start_angle}"
+    )
+    asyncio.run(
+        run_discovery(
+            occupations,
+            out,
+            target=target,
+            model=model,
+            max_parallel=max_parallel,
+            start_angle=start_angle,
+        )
+    )
     click.echo(f"Results in {out}")
 
 
@@ -94,7 +112,9 @@ def discover_software(input_path: str | None, output: str | None, target: int, m
 @click.option("--output", type=click.Path(), default=None)
 @click.option("--concurrency", type=int, default=5)
 @click.option("--model", type=str, default="haiku", help="Claude model (haiku, sonnet, opus)")
-def discover_enrich(input_path: str | None, output: str | None, concurrency: int, model: str) -> None:
+def discover_enrich(
+    input_path: str | None, output: str | None, concurrency: int, model: str
+) -> None:
     """Enrich raw software entries with detailed metadata."""
     from .discovery.enrich import run_enrichment
 
@@ -115,8 +135,15 @@ def discover_enrich(input_path: str | None, output: str | None, concurrency: int
 @click.option("--output", type=click.Path(), default=None)
 @click.option("--n", type=int, default=3, help="Number of searches per app")
 @click.option("--concurrency", type=int, default=50, help="Concurrent searches")
-@click.option("--searxng-url", default="http://localhost:8080", show_default=True, help="SearXNG base URL (set empty string to use DuckDuckGo fallback)")
-def discover_search(input_path: str | None, output: str | None, n: int, concurrency: int, searxng_url: str) -> None:
+@click.option(
+    "--searxng-url",
+    default="http://localhost:8080",
+    show_default=True,
+    help="SearXNG base URL (set empty string to use DuckDuckGo fallback)",
+)
+def discover_search(
+    input_path: str | None, output: str | None, n: int, concurrency: int, searxng_url: str
+) -> None:
     """Phase 1 of batch enrichment: gather N web searches per app via SearXNG."""
     from .discovery.batch_enrich import run_search
 
@@ -130,20 +157,37 @@ def discover_search(input_path: str | None, output: str | None, n: int, concurre
     enriched = DEFAULT_DATA_DIR / "enriched_software.jsonl"
     brave_key = os.environ.get("BRAVE_API_KEY")
     provider = (searxng_url or "duckduckgo") + (" + brave api" if brave_key else "")
-    click.echo(f"Gathering {n} searches per app from {inp} (concurrency={concurrency}, provider={provider})")
-    asyncio.run(run_search(inp, out, n=n, concurrency=concurrency, enriched_path=enriched,
-                           searxng_url=searxng_url or None, brave_api_key=brave_key))
+    click.echo(
+        f"Gathering {n} searches per app from {inp} (concurrency={concurrency}, provider={provider})"
+    )
+    asyncio.run(
+        run_search(
+            inp,
+            out,
+            n=n,
+            concurrency=concurrency,
+            enriched_path=enriched,
+            searxng_url=searxng_url or None,
+            brave_api_key=brave_key,
+        )
+    )
     click.echo(f"Search results written to {out}")
 
 
 @discover.command("batch-submit")
-@click.option("--input", "input_path", type=click.Path(exists=True), default=None, help="search_results.jsonl")
+@click.option(
+    "--input", "input_path", type=click.Path(exists=True), default=None, help="search_results.jsonl"
+)
 @click.option("--bucket", required=True, help="S3 bucket for input/output")
 @click.option("--prefix", default="cua-sandbox-apps/enrich", help="S3 key prefix")
-@click.option("--model", default="us.anthropic.claude-haiku-4-5-20251001-v1:0", help="Bedrock model ID")
+@click.option(
+    "--model", default="us.anthropic.claude-haiku-4-5-20251001-v1:0", help="Bedrock model ID"
+)
 @click.option("--region", default="us-east-1")
 @click.option("--role-arn", default=None, help="IAM role ARN for Bedrock (if needed)")
-def discover_batch_submit(input_path: str | None, bucket: str, prefix: str, model: str, region: str, role_arn: str | None) -> None:
+def discover_batch_submit(
+    input_path: str | None, bucket: str, prefix: str, model: str, region: str, role_arn: str | None
+) -> None:
     """Phase 2: upload search results to S3 and create Bedrock batch inference job."""
     from .discovery.batch_enrich import submit_batch
 
@@ -154,7 +198,15 @@ def discover_batch_submit(input_path: str | None, bucket: str, prefix: str, mode
         raise SystemExit(1)
 
     enriched = DEFAULT_DATA_DIR / "enriched_software.jsonl"
-    job_arn = submit_batch(inp, s3_bucket=bucket, s3_prefix=prefix, model_id=model, region=region, role_arn=role_arn, enriched_path=enriched)
+    job_arn = submit_batch(
+        inp,
+        s3_bucket=bucket,
+        s3_prefix=prefix,
+        model_id=model,
+        region=region,
+        role_arn=role_arn,
+        enriched_path=enriched,
+    )
     click.echo(f"Job ARN: {job_arn}")
     click.echo(f"Run 'discover batch-fetch --job-arn {job_arn}' when complete.")
 
@@ -163,16 +215,22 @@ def discover_batch_submit(input_path: str | None, bucket: str, prefix: str, mode
 @click.option("--job-arn", required=True, help="Bedrock batch job ARN")
 @click.option("--output", type=click.Path(), default=None)
 @click.option("--region", default="us-east-1")
-@click.option("--no-poll", is_flag=True, help="Don't wait — fetch immediately (job must already be complete)")
+@click.option(
+    "--no-poll", is_flag=True, help="Don't wait — fetch immediately (job must already be complete)"
+)
 @click.option("--poll-interval", type=int, default=60, help="Seconds between status checks")
-def discover_batch_fetch(job_arn: str, output: str | None, region: str, no_poll: bool, poll_interval: int) -> None:
+def discover_batch_fetch(
+    job_arn: str, output: str | None, region: str, no_poll: bool, poll_interval: int
+) -> None:
     """Phase 3: download Bedrock batch results from S3, write enriched JSONL."""
     from .discovery.batch_enrich import fetch_results
 
     out = Path(output) if output else DEFAULT_DATA_DIR / "enriched_software.jsonl"
 
     click.echo(f"Fetching results for job {job_arn} → {out}")
-    count = fetch_results(job_arn, out, region=region, poll=not no_poll, poll_interval=poll_interval)
+    count = fetch_results(
+        job_arn, out, region=region, poll=not no_poll, poll_interval=poll_interval
+    )
     click.echo(f"Done: {count} entries written to {out}")
 
 
@@ -201,8 +259,11 @@ def discover_dedup(input_path: str | None, output: str | None, threshold: int) -
 @click.option("--os", "os_filter", multiple=True, help="Only these OS types (repeatable)")
 @click.option("--concurrency", type=int, default=4, help="Max concurrent agents")
 @click.option("--limit", type=int, default=None, help="Max app/os pairs to process")
-@click.option("--strict-install-verify/--no-strict-install-verify", default=True,
-              help="Pre-submit: bash -n parse + re-run install.sh end-to-end in a fresh sandbox")
+@click.option(
+    "--strict-install-verify/--no-strict-install-verify",
+    default=True,
+    help="Pre-submit: bash -n parse + re-run install.sh end-to-end in a fresh sandbox",
+)
 def generate(
     catalog: str | None,
     apps_dir: str | None,
@@ -225,22 +286,44 @@ def generate(
         raise SystemExit(1)
 
     os_list = list(os_filter) if os_filter else None
-    click.echo(f"Generating installers: catalog={cat}, apps_dir={apps}, os={os_list or 'auto-detect'}, concurrency={concurrency}")
-    asyncio.run(run_orchestrator(
-        cat, apps, os_filter=os_list, concurrency=concurrency, limit=limit,
-        strict_install_verify=strict_install_verify,
-    ))
+    click.echo(
+        f"Generating installers: catalog={cat}, apps_dir={apps}, os={os_list or 'auto-detect'}, concurrency={concurrency}"
+    )
+    asyncio.run(
+        run_orchestrator(
+            cat,
+            apps,
+            os_filter=os_list,
+            concurrency=concurrency,
+            limit=limit,
+            strict_install_verify=strict_install_verify,
+        )
+    )
 
 
 @cli.command("create-tasks")
-@click.option("--apps-dir", type=click.Path(), default=None, help="Apps directory (default: package apps/)")
+@click.option(
+    "--apps-dir", type=click.Path(), default=None, help="Apps directory (default: package apps/)"
+)
 @click.option("--concurrency", type=int, default=4, help="Max concurrent task-creator agents")
 @click.option("--limit", type=int, default=None, help="Max (app, os) pairs to process")
-@click.option("--seeds", "target_seed_count", type=int, default=100, help="Target high-quality seed tasks per app")
+@click.option(
+    "--seeds",
+    "target_seed_count",
+    type=int,
+    default=100,
+    help="Target high-quality seed tasks per app",
+)
 @click.option("--model", type=str, default="sonnet", help="Claude model for the task creator")
 @click.option("--app", "only_apps", multiple=True, help="Only run on these app ids (repeatable)")
-def create_tasks(apps_dir: str | None, concurrency: int, limit: int | None,
-                 target_seed_count: int, model: str, only_apps: tuple[str, ...]) -> None:
+def create_tasks(
+    apps_dir: str | None,
+    concurrency: int,
+    limit: int | None,
+    target_seed_count: int,
+    model: str,
+    only_apps: tuple[str, ...],
+) -> None:
     """Phase 3: Generate open-ended deterministic tasks per app (resumable).
 
     Runs after `generate`. For each (app, os) pair with a working install,
@@ -249,16 +332,24 @@ def create_tasks(apps_dir: str | None, concurrency: int, limit: int | None,
     and writes a small set of seed tasks audited by an independent verifier.
     """
     from .pipeline.tasks.orchestrator import run_task_orchestrator
+
     apps = Path(apps_dir) if apps_dir else Path(__file__).parent / "apps"
     if not apps.exists():
         click.echo(f"Apps dir not found: {apps}. Run 'generate' first.", err=True)
         raise SystemExit(1)
-    click.echo(f"Creating tasks: apps_dir={apps}, concurrency={concurrency}, seeds={target_seed_count}, model={model}")
-    asyncio.run(run_task_orchestrator(
-        apps, concurrency=concurrency, limit=limit,
-        target_seed_count=target_seed_count, model=model,
-        only_apps=list(only_apps) if only_apps else None,
-    ))
+    click.echo(
+        f"Creating tasks: apps_dir={apps}, concurrency={concurrency}, seeds={target_seed_count}, model={model}"
+    )
+    asyncio.run(
+        run_task_orchestrator(
+            apps,
+            concurrency=concurrency,
+            limit=limit,
+            target_seed_count=target_seed_count,
+            model=model,
+            only_apps=list(only_apps) if only_apps else None,
+        )
+    )
 
 
 @cli.command("extract-tools")
@@ -271,12 +362,15 @@ def create_tasks(apps_dir: str | None, concurrency: int, limit: int | None,
 def extract_tools(apps_dir, tasks_dir, only_apps, concurrency, tools_per_app, model):
     """Stage 1: Extract MCP tool primitives per app."""
     from .pipeline.tasks.mcp.tool_extractor import extract_tools_for_app
+
     apps = Path(apps_dir) if apps_dir else Path(__file__).parent / "apps"
     tasks = Path(tasks_dir) if tasks_dir else Path(__file__).parent / "tasks"
 
     async def _run():
         import asyncio
+
         sem = asyncio.Semaphore(concurrency)
+
         async def _one(app_id):
             async with sem:
                 app_dir = apps / app_id
@@ -286,8 +380,9 @@ def extract_tools(apps_dir, tasks_dir, only_apps, concurrency, tools_per_app, mo
                     app_dir.mkdir(parents=True, exist_ok=True)
                     click.echo(f"No install dir for {app_id} — running research-only")
                 await extract_tools_for_app(
-                    app_dir, "linux", target_tool_count=tools_per_app,
-                    model=model, tasks_root=tasks)
+                    app_dir, "linux", target_tool_count=tools_per_app, model=model, tasks_root=tasks
+                )
+
         await asyncio.gather(*[_one(a) for a in only_apps])
 
     asyncio.run(_run())
@@ -296,23 +391,33 @@ def extract_tools(apps_dir, tasks_dir, only_apps, concurrency, tools_per_app, mo
 @cli.command("verify-replica")
 @click.argument("app_id")
 @click.option("--tasks-dir", type=click.Path(), default=None)
-@click.option("--replica-source", type=click.Path(), default=None, help="Local path to replica source code")
+@click.option(
+    "--replica-source", type=click.Path(), default=None, help="Local path to replica source code"
+)
 @click.option("--os", "os_type", default="linux")
 @click.option("--model", type=str, default="sonnet")
-def verify_replica(app_id: str, tasks_dir: str | None, replica_source: str | None,
-                   os_type: str, model: str) -> None:
+def verify_replica(
+    app_id: str, tasks_dir: str | None, replica_source: str | None, os_type: str, model: str
+) -> None:
     """Verify a replica environment: boot sandbox, install, screenshot, check /gym.
 
     The agent can debug failures and edit source code — patches are saved for review.
     Reads config from tasks/{app_id}/{os}/replica/app.json.
     """
     from .pipeline.replica.creator import create_replica_installer
+
     tasks = Path(tasks_dir) if tasks_dir else Path(__file__).parent / "tasks"
     source = Path(replica_source) if replica_source else None
     click.echo(f"Verifying replica: {app_id}/{os_type}, tasks_dir={tasks}")
-    result = asyncio.run(create_replica_installer(
-        app_id, os_type, tasks_root=tasks, replica_source_dir=source, model=model,
-    ))
+    result = asyncio.run(
+        create_replica_installer(
+            app_id,
+            os_type,
+            tasks_root=tasks,
+            replica_source_dir=source,
+            model=model,
+        )
+    )
     if result and result.get("verification_passed"):
         click.echo(f"PASSED: {app_id} replica verified")
         if result.get("patch_file"):
@@ -327,12 +432,15 @@ def verify_replica(app_id: str, tasks_dir: str | None, replica_source: str | Non
 
 @cli.command("compose-workflows")
 @click.option("--tasks-dir", type=click.Path(), default=None)
-@click.option("--app", "app_ids", multiple=True, required=True, help="App ids whose tools to compose")
+@click.option(
+    "--app", "app_ids", multiple=True, required=True, help="App ids whose tools to compose"
+)
 @click.option("--target", type=int, default=50)
 @click.option("--model", type=str, default="sonnet")
 def compose_workflows(tasks_dir, app_ids, target, model):
     """Stage 2: Compose multi-app workflows from extracted MCP tools."""
     from .pipeline.tasks.mcp.workflow_composer import compose_workflows as _compose
+
     tasks = Path(tasks_dir) if tasks_dir else Path(__file__).parent / "tasks"
     asyncio.run(_compose(list(app_ids), tasks, target_count=target, model=model))
 
@@ -343,12 +451,15 @@ def compose_workflows(tasks_dir, app_ids, target, model):
 @click.option("--os", "os_type", default="linux")
 @click.option("--target", type=int, default=75, help="Target amplified task count")
 @click.option("--model", type=str, default="us.anthropic.claude-haiku-4-5-20251001-v1:0")
-def amplify_tasks_cmd(app_id: str, tasks_dir: str | None, os_type: str, target: int, model: str) -> None:
+def amplify_tasks_cmd(
+    app_id: str, tasks_dir: str | None, os_type: str, target: int, model: str
+) -> None:
     """Amplify seed tasks using a cheap non-agentic LLM (Gym-Anything §4).
 
     Reads seeds from tasks/{app}/{os}/tasks.jsonl, outputs to tasks_amplified.jsonl.
     """
     from .pipeline.tasks.amplifier import amplify_tasks
+
     tasks = Path(tasks_dir) if tasks_dir else Path(__file__).parent / "tasks"
     result = amplify_tasks(app_id, os_type, tasks_root=tasks, target_count=target, model_id=model)
     click.echo(f"Amplified {len(result)} tasks for {app_id}")
@@ -360,11 +471,16 @@ def amplify_tasks_cmd(app_id: str, tasks_dir: str | None, os_type: str, target: 
 @click.option("--os", "os_type", default="linux")
 @click.option("--target", type=int, default=75)
 @click.option("--model", type=str, default="sonnet")
-def amplify_tasks_agent_cmd(app_id: str, tasks_dir: str | None, os_type: str, target: int, model: str) -> None:
+def amplify_tasks_agent_cmd(
+    app_id: str, tasks_dir: str | None, os_type: str, target: int, model: str
+) -> None:
     """Agent-driven task amplification with sandbox validation (no reviser needed)."""
     from .pipeline.tasks.amplifier_agent import amplify_tasks_agent
+
     tasks = Path(tasks_dir) if tasks_dir else Path(__file__).parent / "tasks"
-    result = asyncio.run(amplify_tasks_agent(app_id, os_type, tasks_root=tasks, target_count=target, model=model))
+    result = asyncio.run(
+        amplify_tasks_agent(app_id, os_type, tasks_root=tasks, target_count=target, model=model)
+    )
     click.echo(f"Amplified {len(result)} validated tasks for {app_id}")
 
 
@@ -375,6 +491,7 @@ def amplify_tasks_agent_cmd(app_id: str, tasks_dir: str | None, os_type: str, ta
 def amplify_workflows_cmd(tasks_dir: str | None, target: int, model: str) -> None:
     """Amplify seed workflows using a cheap non-agentic LLM (Gym-Anything §4)."""
     from .pipeline.tasks.amplifier import amplify_workflows
+
     tasks = Path(tasks_dir) if tasks_dir else Path(__file__).parent / "tasks"
     result = amplify_workflows(tasks_root=tasks, target_count=target, model_id=model)
     click.echo(f"Amplified {len(result)} workflows")
@@ -386,11 +503,16 @@ def amplify_workflows_cmd(tasks_dir: str | None, target: int, model: str) -> Non
 @click.option("--os", "os_type", default="linux")
 @click.option("--type", "file_type", type=click.Choice(["seed", "amplified"]), default="seed")
 @click.option("--max-retries", type=int, default=3)
-def revise_tasks_cmd(app_id: str, tasks_dir: str | None, os_type: str, file_type: str, max_retries: int) -> None:
+def revise_tasks_cmd(
+    app_id: str, tasks_dir: str | None, os_type: str, file_type: str, max_retries: int
+) -> None:
     """Revise tasks to fix quality gaps (missing fields, read-only, bad scripts)."""
     from .pipeline.tasks.reviser import revise_tasks
+
     tasks = Path(tasks_dir) if tasks_dir else Path(__file__).parent / "tasks"
-    result = revise_tasks(app_id, os_type, tasks_root=tasks, file_type=file_type, max_retries=max_retries)
+    result = revise_tasks(
+        app_id, os_type, tasks_root=tasks, file_type=file_type, max_retries=max_retries
+    )
     click.echo(f"Revised: {result['revised']}, OK: {result['skipped']}, Failed: {result['failed']}")
 
 
@@ -400,11 +522,16 @@ def revise_tasks_cmd(app_id: str, tasks_dir: str | None, os_type: str, file_type
 @click.option("--os", "os_type", default="linux")
 @click.option("--type", "file_type", type=click.Choice(["seed", "amplified"]), default="seed")
 @click.option("--model", type=str, default="sonnet")
-def revise_tasks_agent_cmd(app_id: str, tasks_dir: str | None, os_type: str, file_type: str, model: str) -> None:
+def revise_tasks_agent_cmd(
+    app_id: str, tasks_dir: str | None, os_type: str, file_type: str, model: str
+) -> None:
     """Agent-driven task revision: boots sandbox, validates start+end state, fixes issues, produces patches."""
     from .pipeline.tasks.reviser_agent import revise_tasks_agent
+
     tasks = Path(tasks_dir) if tasks_dir else Path(__file__).parent / "tasks"
-    result = asyncio.run(revise_tasks_agent(app_id, os_type, tasks_root=tasks, file_type=file_type, model=model))
+    result = asyncio.run(
+        revise_tasks_agent(app_id, os_type, tasks_root=tasks, file_type=file_type, model=model)
+    )
     if "error" in result:
         click.echo(f"Error: {result['error']}", err=True)
         raise SystemExit(1)
@@ -418,13 +545,16 @@ def revise_tasks_agent_cmd(app_id: str, tasks_dir: str | None, os_type: str, fil
 def revise_workflows_agent_cmd(tasks_dir: str | None, file_type: str, model: str) -> None:
     """Agent-driven workflow revision. Safe to run N instances in parallel — uses file locks."""
     from .pipeline.tasks.reviser_agent import revise_workflows_agent
+
     tasks = Path(tasks_dir) if tasks_dir else Path(__file__).parent / "tasks"
     result = asyncio.run(revise_workflows_agent(tasks_root=tasks, file_type=file_type, model=model))
     if "error" in result:
         click.echo(f"Error: {result['error']}", err=True)
         raise SystemExit(1)
-    click.echo(f"This agent: {result['total']} processed, {result['passed']} passed. "
-               f"Global: {result.get('global_done', '?')}/{result.get('global_total', '?')} done.")
+    click.echo(
+        f"This agent: {result['total']} processed, {result['passed']} passed. "
+        f"Global: {result.get('global_done', '?')}/{result.get('global_total', '?')} done."
+    )
 
 
 @cli.command("revise-workflows")
@@ -434,6 +564,7 @@ def revise_workflows_agent_cmd(tasks_dir: str | None, file_type: str, model: str
 def revise_workflows_cmd(tasks_dir: str | None, file_type: str, max_retries: int) -> None:
     """Revise workflows to fix quality gaps (descriptive oracles, missing fields)."""
     from .pipeline.tasks.reviser import revise_workflows
+
     tasks = Path(tasks_dir) if tasks_dir else Path(__file__).parent / "tasks"
     result = revise_workflows(tasks_root=tasks, file_type=file_type, max_retries=max_retries)
     click.echo(f"Revised: {result['revised']}, OK: {result['skipped']}, Failed: {result['failed']}")
@@ -447,12 +578,17 @@ def revise_workflows_cmd(tasks_dir: str | None, file_type: str, max_retries: int
 def validate_tasks_cmd(app_id: str, tasks_dir: str | None, os_type: str, file_type: str) -> None:
     """E2E validate tasks: boot sandbox, run setup, execute golden path, verify extract."""
     from .pipeline.tasks.validator import validate_tasks_batch
+
     tasks = Path(tasks_dir) if tasks_dir else Path(__file__).parent / "tasks"
-    result = asyncio.run(validate_tasks_batch(app_id, os_type, tasks_root=tasks, file_type=file_type))
+    result = asyncio.run(
+        validate_tasks_batch(app_id, os_type, tasks_root=tasks, file_type=file_type)
+    )
     if "error" in result:
         click.echo(f"Error: {result['error']}", err=True)
         raise SystemExit(1)
-    click.echo(f"Total: {result['total']}, Start OK: {result['start_ok']}, End OK: {result['end_ok']}, Failed: {result['failed']}")
+    click.echo(
+        f"Total: {result['total']}, Start OK: {result['start_ok']}, End OK: {result['end_ok']}, Failed: {result['failed']}"
+    )
     for r in result.get("results", []):
         if r.get("issues"):
             click.echo(f"  {r['task_id']}: {r['issues']}")
@@ -465,10 +601,12 @@ def validate_tasks_cmd(app_id: str, tasks_dir: str | None, os_type: str, file_ty
 @click.option("--apps-dir", type=click.Path(), default=None)
 @click.option("--tasks-dir", type=click.Path(), default=None)
 @click.option("--port", type=int, default=8787)
-def review_task(app_id: str, task_id: str, os_type: str, apps_dir: str | None,
-                tasks_dir: str | None, port: int) -> None:
+def review_task(
+    app_id: str, task_id: str, os_type: str, apps_dir: str | None, tasks_dir: str | None, port: int
+) -> None:
     """Boot a task in a sandbox with VNC for human review."""
     from .pipeline.tasks.review.server import review_task as _review
+
     apps = Path(apps_dir) if apps_dir else Path(__file__).parent / "apps"
     tasks = Path(tasks_dir) if tasks_dir else Path(__file__).parent / "tasks"
     asyncio.run(_review(app_id, task_id, apps, tasks, target_os=os_type, port=port))

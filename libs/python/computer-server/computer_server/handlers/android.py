@@ -687,9 +687,7 @@ class AndroidAutomationHandler(BaseAutomationHandler):
         success, output = await adb_exec.run("shell", script, decode=True)
         return {"success": success, "output": output}
 
-    async def run_command(
-        self, command: str, timeout: Optional[float] = None
-    ) -> Dict[str, Any]:
+    async def run_command(self, command: str, timeout: Optional[float] = None) -> Dict[str, Any]:
         """Run a shell command inside the Android emulator via adb shell.
 
         Args:
@@ -715,9 +713,7 @@ class AndroidAutomationHandler(BaseAutomationHandler):
             if timeout is None:
                 stdout, stderr = await process.communicate()
             else:
-                stdout, stderr = await asyncio.wait_for(
-                    process.communicate(), timeout=timeout
-                )
+                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
         except asyncio.TimeoutError:
             process.kill()
             return {

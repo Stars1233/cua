@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 _all_sandboxes: dict[str, Any] = {}
 
 
-def make_sandbox_tools(evidence_dir: Path | None = None, sandbox_registry: dict[str, Any] | None = None):
+def make_sandbox_tools(
+    evidence_dir: Path | None = None, sandbox_registry: dict[str, Any] | None = None
+):
     """Create MCP tools for sandbox lifecycle + file/exec operations.
 
     Args:
@@ -71,7 +73,14 @@ def make_sandbox_tools(evidence_dir: Path | None = None, sandbox_registry: dict[
             _all_sandboxes[name] = sb
 
             logger.info("Created sandbox %s (os=%s)", name, os_type)
-            return {"content": [{"type": "text", "text": f"OK: sandbox '{name}' created (os={os_type}). Use this name with other sandbox tools."}]}
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"OK: sandbox '{name}' created (os={os_type}). Use this name with other sandbox tools.",
+                    }
+                ]
+            }
 
         except Exception as e:
             logger.error("Failed to create sandbox %s: %s", name, e)
@@ -85,7 +94,11 @@ def make_sandbox_tools(evidence_dir: Path | None = None, sandbox_registry: dict[
             "properties": {
                 "name": {"type": "string", "description": "Sandbox name from create_sandbox"},
                 "command": {"type": "string", "description": "Shell command to run"},
-                "timeout": {"type": "integer", "description": "Timeout in seconds (default 120)", "default": 120},
+                "timeout": {
+                    "type": "integer",
+                    "description": "Timeout in seconds (default 120)",
+                    "default": 120,
+                },
             },
             "required": ["name", "command"],
         },
@@ -97,7 +110,14 @@ def make_sandbox_tools(evidence_dir: Path | None = None, sandbox_registry: dict[
 
         sb = sandboxes.get(name)
         if not sb:
-            return {"content": [{"type": "text", "text": f"ERROR: sandbox '{name}' not found. Create one first."}]}
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"ERROR: sandbox '{name}' not found. Create one first.",
+                    }
+                ]
+            }
 
         logger.info("[%s] $ %s", name, command[:120])
         try:
@@ -110,7 +130,9 @@ def make_sandbox_tools(evidence_dir: Path | None = None, sandbox_registry: dict[
             output = f"EXIT CODE: {result.returncode}\n\nSTDOUT:\n{result.stdout[:10000]}\n\nSTDERR:\n{result.stderr[:5000]}"
             return {"content": [{"type": "text", "text": output}]}
         except asyncio.TimeoutError:
-            return {"content": [{"type": "text", "text": f"ERROR: command timed out after {timeout}s"}]}
+            return {
+                "content": [{"type": "text", "text": f"ERROR: command timed out after {timeout}s"}]
+            }
         except Exception as e:
             return {"content": [{"type": "text", "text": f"ERROR: {e}"}]}
 
@@ -121,9 +143,16 @@ def make_sandbox_tools(evidence_dir: Path | None = None, sandbox_registry: dict[
             "type": "object",
             "properties": {
                 "name": {"type": "string", "description": "Sandbox name"},
-                "path": {"type": "string", "description": "Absolute path inside the sandbox (e.g. /tmp/install.sh)"},
+                "path": {
+                    "type": "string",
+                    "description": "Absolute path inside the sandbox (e.g. /tmp/install.sh)",
+                },
                 "content": {"type": "string", "description": "File content to write"},
-                "executable": {"type": "boolean", "description": "Make the file executable (default false)", "default": False},
+                "executable": {
+                    "type": "boolean",
+                    "description": "Make the file executable (default false)",
+                    "default": False,
+                },
             },
             "required": ["name", "path", "content"],
         },
@@ -145,7 +174,9 @@ def make_sandbox_tools(evidence_dir: Path | None = None, sandbox_registry: dict[
             await sb.shell.run(f"cat > {path} << 'SANDBOX_EOF'\n{content}\nSANDBOX_EOF")
             if executable:
                 await sb.shell.run(f"chmod +x {path}")
-            return {"content": [{"type": "text", "text": f"OK: wrote {len(content)} bytes to {path}"}]}
+            return {
+                "content": [{"type": "text", "text": f"OK: wrote {len(content)} bytes to {path}"}]
+            }
         except Exception as e:
             return {"content": [{"type": "text", "text": f"ERROR: {e}"}]}
 
@@ -157,7 +188,11 @@ def make_sandbox_tools(evidence_dir: Path | None = None, sandbox_registry: dict[
             "properties": {
                 "name": {"type": "string", "description": "Sandbox name"},
                 "path": {"type": "string", "description": "Absolute path inside the sandbox"},
-                "max_lines": {"type": "integer", "description": "Max lines to return (default 200)", "default": 200},
+                "max_lines": {
+                    "type": "integer",
+                    "description": "Max lines to return (default 200)",
+                    "default": 200,
+                },
             },
             "required": ["name", "path"],
         },
@@ -202,23 +237,31 @@ def make_sandbox_tools(evidence_dir: Path | None = None, sandbox_registry: dict[
             if evidence_dir:
                 evidence_dir.mkdir(parents=True, exist_ok=True)
                 out_path = evidence_dir / f"{name}.jpg"
-                if hasattr(screenshot, 'save'):
+                if hasattr(screenshot, "save"):
                     # PIL Image — save as JPEG
                     screenshot = screenshot.convert("RGB")
                     screenshot.save(str(out_path), "JPEG", quality=85)
                 elif isinstance(screenshot, bytes):
                     # Raw PNG bytes — convert to JPEG
                     try:
-                        from PIL import Image as PILImage
                         import io
+
+                        from PIL import Image as PILImage
+
                         img = PILImage.open(io.BytesIO(screenshot)).convert("RGB")
                         img.save(str(out_path), "JPEG", quality=85)
                     except ImportError:
                         # No PIL — save as PNG with .jpg extension (fallback)
                         out_path = evidence_dir / f"{name}.png"
                         out_path.write_bytes(screenshot)
-                return {"content": [{"type": "text", "text": f"OK: screenshot saved to {out_path}"}]}
-            return {"content": [{"type": "text", "text": "OK: screenshot taken (no evidence_dir configured)"}]}
+                return {
+                    "content": [{"type": "text", "text": f"OK: screenshot saved to {out_path}"}]
+                }
+            return {
+                "content": [
+                    {"type": "text", "text": "OK: screenshot taken (no evidence_dir configured)"}
+                ]
+            }
         except Exception as e:
             return {"content": [{"type": "text", "text": f"ERROR: {e}"}]}
 
@@ -239,7 +282,11 @@ def make_sandbox_tools(evidence_dir: Path | None = None, sandbox_registry: dict[
         sb = sandboxes.pop(name, None)
         _all_sandboxes.pop(name, None)
         if not sb:
-            return {"content": [{"type": "text", "text": f"OK: sandbox '{name}' already deleted or not found."}]}
+            return {
+                "content": [
+                    {"type": "text", "text": f"OK: sandbox '{name}' already deleted or not found."}
+                ]
+            }
 
         try:
             await sb.destroy()
@@ -249,7 +296,14 @@ def make_sandbox_tools(evidence_dir: Path | None = None, sandbox_registry: dict[
             logger.warning("Error deleting sandbox %s: %s", name, e)
             return {"content": [{"type": "text", "text": f"WARN: sandbox deleted with error: {e}"}]}
 
-    return [create_sandbox, sandbox_run, sandbox_write, sandbox_read, sandbox_screenshot, delete_sandbox]
+    return [
+        create_sandbox,
+        sandbox_run,
+        sandbox_write,
+        sandbox_read,
+        sandbox_screenshot,
+        delete_sandbox,
+    ]
 
 
 async def cleanup_all_sandboxes() -> None:

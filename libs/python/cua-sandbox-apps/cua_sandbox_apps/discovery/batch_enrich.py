@@ -98,7 +98,7 @@ def _search_queries(name: str, website: str, n: int) -> list[str]:
         f"{q} pricing open source github",
         f"{q} install linux windows macos apt brew choco winget",
         f"{q} {website} features review",
-        f'site:github.com {q}',
+        f"site:github.com {q}",
     ]
     return base[:n]
 
@@ -106,6 +106,7 @@ def _search_queries(name: str, website: str, n: int) -> list[str]:
 # ---------------------------------------------------------------------------
 # Phase 1: Search
 # ---------------------------------------------------------------------------
+
 
 async def _searxng_search(
     query: str,
@@ -121,7 +122,14 @@ async def _searxng_search(
                 return []
             data = await resp.json(content_type=None)
             results = data.get("results", [])[:max_results]
-            return [{"title": r.get("title", ""), "body": r.get("content", ""), "href": r.get("url", "")} for r in results]
+            return [
+                {
+                    "title": r.get("title", ""),
+                    "body": r.get("content", ""),
+                    "href": r.get("url", ""),
+                }
+                for r in results
+            ]
     except Exception as e:
         logger.debug("SearXNG search failed for %r: %s", query, e)
         return []
@@ -129,6 +137,7 @@ async def _searxng_search(
 
 class _TokenBucket:
     """Simple async token bucket — refills at `rate` tokens/sec."""
+
     def __init__(self, rate: float):
         self._rate = rate
         self._tokens = rate
@@ -158,10 +167,15 @@ async def _brave_search(
     if bucket:
         await bucket.acquire()
     try:
-        headers = {"Accept": "application/json", "Accept-Encoding": "gzip", "X-Subscription-Token": api_key}
+        headers = {
+            "Accept": "application/json",
+            "Accept-Encoding": "gzip",
+            "X-Subscription-Token": api_key,
+        }
         params = {"q": query, "count": max_results}
-        async with session.get("https://api.search.brave.com/res/v1/web/search",
-                               headers=headers, params=params) as resp:
+        async with session.get(
+            "https://api.search.brave.com/res/v1/web/search", headers=headers, params=params
+        ) as resp:
             if resp.status == 429:
                 logger.warning("Brave API rate limit hit for %r", query)
                 return []
@@ -170,7 +184,14 @@ async def _brave_search(
                 return []
             data = await resp.json(content_type=None)
             results = data.get("web", {}).get("results", [])[:max_results]
-            return [{"title": r.get("title", ""), "body": r.get("description", ""), "href": r.get("url", "")} for r in results]
+            return [
+                {
+                    "title": r.get("title", ""),
+                    "body": r.get("description", ""),
+                    "href": r.get("url", ""),
+                }
+                for r in results
+            ]
     except Exception as e:
         logger.debug("Brave API search failed for %r: %s", query, e)
         return []
@@ -197,7 +218,9 @@ async def _search_one(
             # Sequential queries per app — keeps total req/s = concurrency (not concurrency*n)
             results_list = []
             for q in queries:
-                results_list.append(await _brave_search(q, brave_api_key, session, bucket=brave_bucket))
+                results_list.append(
+                    await _brave_search(q, brave_api_key, session, bucket=brave_bucket)
+                )
             for q, results in zip(queries, results_list):
                 search_results[q] = results
         elif searxng_url and session is not None:
@@ -208,6 +231,7 @@ async def _search_one(
         else:
             try:
                 from duckduckgo_search import AsyncDDGS
+
                 async with AsyncDDGS() as ddgs:
                     for q in queries:
                         try:
@@ -258,8 +282,13 @@ async def run_search(
     done |= _already_enriched(enriched_path)
 
     remaining = [e for e in raw_entries if e.get("name", "").lower().strip() not in done]
-    logger.info("Searching %d entries (%d already done/enriched, n=%d, concurrency=%d)",
-                len(remaining), len(done), n, concurrency)
+    logger.info(
+        "Searching %d entries (%d already done/enriched, n=%d, concurrency=%d)",
+        len(remaining),
+        len(done),
+        n,
+        concurrency,
+    )
 
     sem = asyncio.Semaphore(concurrency)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -274,24 +303,37 @@ async def run_search(
 
     if brave_api_key or searxng_url:
         import aiohttp
-        connector = aiohttp.TCPConnector(limit=concurrency * 3)  # N queries fired in parallel per app
+
+        connector = aiohttp.TCPConnector(
+            limit=concurrency * 3
+        )  # N queries fired in parallel per app
         headers = {"X-Forwarded-For": "127.0.0.1"}
         brave_bucket = _TokenBucket(45) if brave_api_key else None  # 45 req/s < 50/s limit
         async with aiohttp.ClientSession(connector=connector, headers=headers) as session:
+
             async def _run_one(entry: dict) -> None:
-                result = await _search_one(entry, n, sem, searxng_url=searxng_url,
-                                           brave_api_key=brave_api_key,
-                                           brave_bucket=brave_bucket, session=session)
+                result = await _search_one(
+                    entry,
+                    n,
+                    sem,
+                    searxng_url=searxng_url,
+                    brave_api_key=brave_api_key,
+                    brave_bucket=brave_bucket,
+                    session=session,
+                )
                 with open(output_path, "a", encoding="utf-8") as f:
                     f.write(json.dumps(result, default=str) + "\n")
                 logger.info("Searched: %s", entry.get("name"))
+
             await asyncio.gather(*[_run_one(e) for e in remaining])
     else:
+
         async def _run_one(entry: dict) -> None:  # type: ignore[no-redef]
             result = await _search_one(entry, n, sem)
             with open(output_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(result, default=str) + "\n")
             logger.info("Searched: %s", entry.get("name"))
+
         await asyncio.gather(*[_run_one(e) for e in remaining])
 
     logger.info("Search complete. Results in %s", output_path)
@@ -300,6 +342,7 @@ async def run_search(
 # ---------------------------------------------------------------------------
 # Phase 2: Bedrock Batch Submit
 # ---------------------------------------------------------------------------
+
 
 def _make_batch_record(entry: dict, model_id: str) -> dict:
     name = entry.get("name", "unknown")
@@ -350,14 +393,18 @@ def submit_batch(
     import boto3
 
     with open(input_path, encoding="utf-8") as f:
-        entries = [json.loads(l) for l in f if l.strip()]
+        entries = [json.loads(line) for line in f if line.strip()]
 
     # Skip already enriched entries
     already_done = _already_enriched(enriched_path)
     if already_done:
         before = len(entries)
         entries = [e for e in entries if e.get("name", "").lower().strip() not in already_done]
-        logger.info("Skipping %d already-enriched entries (%d remaining)", before - len(entries), len(entries))
+        logger.info(
+            "Skipping %d already-enriched entries (%d remaining)",
+            before - len(entries),
+            len(entries),
+        )
 
     logger.info("Preparing %d batch records for %s", len(entries), model_id)
     records = [_make_batch_record(e, model_id) for e in entries]
@@ -401,6 +448,7 @@ def submit_batch(
 
 def get_batch_status(job_arn: str, region: str = "us-east-1") -> dict:
     import boto3
+
     bedrock = boto3.client("bedrock", region_name=region)
     resp = bedrock.get_model_invocation_job(jobIdentifier=job_arn)
     return {
@@ -416,6 +464,7 @@ def get_batch_status(job_arn: str, region: str = "us-east-1") -> dict:
 # ---------------------------------------------------------------------------
 # Phase 3: Fetch from S3
 # ---------------------------------------------------------------------------
+
 
 def fetch_results(
     job_arn: str,

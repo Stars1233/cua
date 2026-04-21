@@ -65,12 +65,14 @@ class Files:
             if isinstance(item, str):
                 out.append(FileEntry(name=item, path=f"{path.rstrip('/')}/{item}", is_dir=False))
             elif isinstance(item, dict):
-                out.append(FileEntry(
-                    name=item.get("name", ""),
-                    path=item.get("path", f"{path.rstrip('/')}/{item.get('name', '')}"),
-                    is_dir=bool(item.get("is_dir", False)),
-                    size=item.get("size"),
-                ))
+                out.append(
+                    FileEntry(
+                        name=item.get("name", ""),
+                        path=item.get("path", f"{path.rstrip('/')}/{item.get('name', '')}"),
+                        is_dir=bool(item.get("is_dir", False)),
+                        size=item.get("size"),
+                    )
+                )
         return out
 
     async def make_dir(self, path: str) -> None:

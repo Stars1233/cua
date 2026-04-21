@@ -20,11 +20,14 @@ class Apps:
         script = _find_app_install_script(app_id, self._os_type)
         if script is None:
             return CommandResult(
-                stdout="", returncode=1,
+                stdout="",
+                returncode=1,
                 stderr=f"No install script for '{app_id}' on {self._os_type}. "
-                       f"Install cua-sandbox-apps or run 'cua-sandbox-apps generate'.",
+                f"Install cua-sandbox-apps or run 'cua-sandbox-apps generate'.",
             )
-        result = await self._t.send("run_command", command=f"bash -c {_sh_quote(script)}", timeout=900)
+        result = await self._t.send(
+            "run_command", command=f"bash -c {_sh_quote(script)}", timeout=900
+        )
         if isinstance(result, dict):
             return CommandResult(
                 stdout=result.get("stdout", ""),
@@ -44,7 +47,8 @@ class Apps:
         script = _find_app_launch_script(app_id, self._os_type)
         if script is None:
             return CommandResult(
-                stdout="", returncode=1,
+                stdout="",
+                returncode=1,
                 stderr=f"No launch script for '{app_id}' on {self._os_type}.",
             )
         result = await self._t.pty_create(command=f"bash -c {_sh_quote(script)}")

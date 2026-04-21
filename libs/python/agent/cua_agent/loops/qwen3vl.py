@@ -14,4 +14,5 @@ from .generic_vlm import GenericVlmConfig
 @register_agent(models=r"(?i).*qwen.*")
 class Qwen3VlConfig(GenericVlmConfig):
     """Qwen3-VL agent loop using litellm with function/tool calling."""
+
     pass

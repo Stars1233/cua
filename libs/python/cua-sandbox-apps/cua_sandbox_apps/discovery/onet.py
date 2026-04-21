@@ -21,7 +21,9 @@ BLS_OEWS_URL = "https://www.bls.gov/oes/special-requests/oesm24nat.zip"
 # O*NET occupation data (SOC crosswalk)
 ONET_SOC_URL = "https://www.onetcenter.org/dl_files/database/db_29_1_text/Occupation%20Data.txt"
 # O*NET computer use importance/level
-ONET_WORK_ACTIVITIES_URL = "https://www.onetcenter.org/dl_files/database/db_29_1_text/Work%20Activities.txt"
+ONET_WORK_ACTIVITIES_URL = (
+    "https://www.onetcenter.org/dl_files/database/db_29_1_text/Work%20Activities.txt"
+)
 
 
 async def download_if_missing(url: str, dest: Path, client: httpx.AsyncClient) -> Path:
@@ -56,13 +58,15 @@ def parse_oews_national(csv_path: Path) -> list[dict]:
             except ValueError:
                 mean_wage = 0.0
             if employment > 0 and mean_wage > 0:
-                records.append({
-                    "soc_code": row.get("OCC_CODE", ""),
-                    "occupation_title": row.get("OCC_TITLE", ""),
-                    "employment": employment,
-                    "mean_wage": mean_wage,
-                    "wage_bill": employment * mean_wage,
-                })
+                records.append(
+                    {
+                        "soc_code": row.get("OCC_CODE", ""),
+                        "occupation_title": row.get("OCC_TITLE", ""),
+                        "employment": employment,
+                        "mean_wage": mean_wage,
+                        "wage_bill": employment * mean_wage,
+                    }
+                )
     return records
 
 

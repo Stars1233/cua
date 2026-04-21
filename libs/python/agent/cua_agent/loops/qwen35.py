@@ -31,15 +31,15 @@ QWEN3_5_COMPUTER_TOOL: Dict[str, Any] = {
         "name": "computer",
         "description": (
             "* `key`: Performs key down presses on the arguments passed in order, then performs key releases in reverse order.\n"
-            "* `type`: Type a string of text on the keyboard.\n"  
+            "* `type`: Type a string of text on the keyboard.\n"
             "* `mouse_move`: Move the cursor to a specified (x, y) pixel coordinate on the screen.\n"
-            "* `left_click`: Click the left mouse button at a specified (x, y) pixel coordinate on the screen. Optional `text` parameter can specify modifier keys (e.g., \"ctrl\", \"shift\", \"ctrl+shift\") that will be held during the click.\n"
+            '* `left_click`: Click the left mouse button at a specified (x, y) pixel coordinate on the screen. Optional `text` parameter can specify modifier keys (e.g., "ctrl", "shift", "ctrl+shift") that will be held during the click.\n'
             "* `left_click_drag`: Click and drag the cursor to a specified (x, y) pixel coordinate on the screen.\n"
             "* `right_click`: Click the right mouse button at a specified (x, y) pixel coordinate on the screen. Optional `text` parameter can specify modifier keys that will be held during the click.\n"
             "* `middle_click`: Click the middle mouse button at a specified (x, y) pixel coordinate on the screen. Optional `text` parameter can specify modifier keys that will be held during the click.\n"
             "* `double_click`: Double-click the left mouse button at a specified (x, y) pixel coordinate on the screen. Optional `text` parameter can specify modifier keys that will be held during the click.\n"
             "* `triple_click`: Triple-click the left mouse button at a specified (x, y) pixel coordinate on the screen (simulated as double-click since it's the closest action). Optional `text` parameter can specify modifier keys that will be held during the click.\n"
-            "* `scroll`: Performs a scroll of the mouse scroll wheel. Optional `text` parameter can specify a modifier key (e.g., \"shift\", \"ctrl\") that will be held during scrolling.\n"
+            '* `scroll`: Performs a scroll of the mouse scroll wheel. Optional `text` parameter can specify a modifier key (e.g., "shift", "ctrl") that will be held during scrolling.\n'
             "* `hscroll`: Performs a horizontal scroll (mapped to regular scroll). Optional `text` parameter can specify a modifier key that will be held during scrolling.\n"
             "* `wait`: Wait specified seconds for the change to happen.\n"
             # "* `terminate`: Terminate the current task and report its completion status.\n"
@@ -160,16 +160,14 @@ def _parse_tool_call_from_text(text: str) -> Optional[Dict[str, Any]]:
         params_block = fn_match.group(2)
         # Extract all <parameter=key>value</parameter> pairs
         params: Dict[str, Any] = {}
-        for pm in re.finditer(
-            r"<parameter=(\w+)>\s*([\s\S]*?)\s*</parameter>", params_block
-        ):
+        for pm in re.finditer(r"<parameter=(\w+)>\s*([\s\S]*?)\s*</parameter>", params_block):
             key = pm.group(1)
             val = pm.group(2).strip()
             # Try to parse as JSON (for arrays/numbers), fall back to string
             try:
                 params[key] = json.loads(val)
             except (json.JSONDecodeError, ValueError):
-                params[key]  = val
+                params[key] = val
         # The XML format uses <parameter=type> for the action field name,
         # but the Qwen tool schema calls it "action".  Remap if we got
         # "type" that looks like an action name rather than a literal type.
@@ -297,7 +295,7 @@ class Qwen35Config(AsyncAgentConfig):
             messages,
             allow_images_in_tool_results=False,
         )
-        
+
         # print(f"The number of items in the converted_msgs: {len(converted_msgs)}")
 
         # Build function schemas from tools array
@@ -322,7 +320,7 @@ class Qwen35Config(AsyncAgentConfig):
         # If no tools provided or no computer tool found, use default QWEN3_COMPUTER_TOOL
         if not function_schemas:
             function_schemas = [QWEN3_5_COMPUTER_TOOL["function"]]
-            
+
         # print(f"[qwen35] function_schemas: {function_schemas}")
 
         # Prepend Nous-generated system if available
@@ -428,7 +426,7 @@ class Qwen35Config(AsyncAgentConfig):
                         part["min_pixels"] = MIN_PIXELS
                         part["max_pixels"] = MAX_PIXELS
                         last_rw, last_rh = rw, rh
-                        
+
         for i, msg in enumerate(completion_messages):
             role = msg.get("role")
             content = msg.get("content")
@@ -437,17 +435,17 @@ class Qwen35Config(AsyncAgentConfig):
                 for item in content:
                     item_type = item.get("type")
                     if item_type == "text":
-                        step_content.append(item.get('text'))
+                        step_content.append(item.get("text"))
                     elif item_type == "image_url":
-                        step_content.append("Image URL: " + item.get('image_url').get('url')[:100])
+                        step_content.append("Image URL: " + item.get("image_url").get("url")[:100])
             else:
                 item = content
                 step_content = ""
                 if isinstance(item, dict) and item.get("type") == "image_url":
-                    step_content = "Image URL: " + item.get('image_url').get('url')[:100]
+                    step_content = "Image URL: " + item.get("image_url").get("url")[:100]
                 else:
                     step_content = content
-                    
+
             print(f"Step {i}: Role: {role}, Content: {step_content}")
 
         api_kwargs: Dict[str, Any] = {
@@ -497,12 +495,14 @@ class Qwen35Config(AsyncAgentConfig):
         if tool_call and isinstance(tool_call, dict):
             fn_name = tool_call.get("name") or "computer"
             raw_args = tool_call.get("arguments") or {}
-            
-            output_items.append({
-                "type": "message",
-                "role": "assistant",
-                "content": [{"type": "output_text", "text": content_text}],
-            })
+
+            output_items.append(
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type": "output_text", "text": content_text}],
+                }
+            )
 
             # Unnormalize coordinates to actual screen size using last resized dims
             if last_rw is None or last_rh is None:
@@ -529,17 +529,19 @@ class Qwen35Config(AsyncAgentConfig):
                             "arguments": json.dumps(args),
                         },
                     }
-                ]
+                ],
             }
             output_items.extend(convert_completion_messages_to_responses_items([fake_cm]))
-            
+
         elif tool_calls_array:
-            
-            output_items.append({
-                "type": "message",
-                "role": "assistant",
-                "content": [{"type": "output_text", "text": content_text}],
-            })
+
+            output_items.append(
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type": "output_text", "text": content_text}],
+                }
+            )
 
             processed_tool_calls = []
             for tc in tool_calls_array:
@@ -579,7 +581,7 @@ class Qwen35Config(AsyncAgentConfig):
                 "tool_calls": processed_tool_calls,
             }
             output_items.extend(convert_completion_messages_to_responses_items([fake_cm]))
-            
+
         else:
             # No tool calls found in either format, return text response
             fake_cm = {"role": "assistant", "content": content_text}
@@ -605,7 +607,8 @@ class Qwen35Config(AsyncAgentConfig):
             "type": "function",
             "function": {
                 **QWEN3_5_COMPUTER_TOOL["function"],
-                "parameters": {**QWEN3_5_COMPUTER_TOOL["function"]["parameters"],
+                "parameters": {
+                    **QWEN3_5_COMPUTER_TOOL["function"]["parameters"],
                     "type": "object",
                     "properties": {
                         "action": {"type": "string", "enum": ["left_click"]},

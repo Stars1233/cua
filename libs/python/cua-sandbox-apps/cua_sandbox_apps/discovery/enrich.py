@@ -110,7 +110,10 @@ def _make_submit_tool(output_path: Path, result_holder: list):
                         "categories": {"type": "array", "items": {"type": "string"}},
                         "tags": {"type": "array", "items": {"type": "string"}},
                         "os_support": {"type": "array", "items": {"type": "string"}},
-                        "app_type": {"type": "string", "enum": ["standalone", "cli", "library", "webapp", "both"]},
+                        "app_type": {
+                            "type": "string",
+                            "enum": ["standalone", "cli", "library", "webapp", "both"],
+                        },
                         "requires_payment": {"type": "boolean"},
                         "foss": {"type": "boolean"},
                         "gh_repo": {"type": "string"},
@@ -141,14 +144,16 @@ def _make_submit_tool(output_path: Path, result_holder: list):
             _release_lock(output_path)
 
         result_holder.append(entry)
-        return {"content": [{"type": "text", "text": f"OK: enriched entry saved for {entry['name']}"}]}
+        return {
+            "content": [{"type": "text", "text": f"OK: enriched entry saved for {entry['name']}"}]
+        }
 
     return submit_enriched
 
 
 async def enrich_app(raw_entry: dict, output_path: Path, model: str = "haiku") -> dict | None:
     """Enrich a single app entry via a Claude agent with submit_enriched tool."""
-    from claude_agent_sdk import query, ClaudeAgentOptions, create_sdk_mcp_server
+    from claude_agent_sdk import ClaudeAgentOptions, create_sdk_mcp_server, query
 
     name = raw_entry.get("name", "unknown")
     website = raw_entry.get("website", "")
@@ -198,10 +203,7 @@ async def run_enrichment(
     raw_entries = read_jsonl(input_path)
     already_done = _already_enriched(output_path)
 
-    remaining = [
-        e for e in raw_entries
-        if e.get("name", "").lower().strip() not in already_done
-    ]
+    remaining = [e for e in raw_entries if e.get("name", "").lower().strip() not in already_done]
     random.shuffle(remaining)
 
     if not remaining:
@@ -210,7 +212,9 @@ async def run_enrichment(
 
     logger.info(
         "Enriching %d entries (%d already done, concurrency=%d)",
-        len(remaining), len(already_done), concurrency,
+        len(remaining),
+        len(already_done),
+        concurrency,
     )
 
     sem = asyncio.Semaphore(concurrency)

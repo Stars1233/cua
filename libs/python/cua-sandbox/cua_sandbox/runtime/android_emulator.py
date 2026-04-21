@@ -453,7 +453,7 @@ class AndroidEmulatorRuntime(Runtime):
                         "mkdir -p /data/local/tmp && "
                         "echo 'chrome --no-first-run --disable-fre "
                         "--no-default-browser-check "
-                        f"--disable-digital-asset-link-verification-for-url=\"{origin}\"' "
+                        f'--disable-digital-asset-link-verification-for-url="{origin}"\' '
                         "> /data/local/tmp/chrome-command-line",
                     ]:
                         subprocess.run(

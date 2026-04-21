@@ -888,7 +888,10 @@ class TaskRunner:
                     raise FileNotFoundError(
                         f"--with path does not exist: {dev_path} (resolved to {abs_path})"
                     )
-                if not (abs_path / "pyproject.toml").exists() and not (abs_path / "setup.py").exists():
+                if (
+                    not (abs_path / "pyproject.toml").exists()
+                    and not (abs_path / "setup.py").exists()
+                ):
                     raise FileNotFoundError(
                         f"--with path is not an installable package (no pyproject.toml or setup.py): {abs_path}"
                     )
