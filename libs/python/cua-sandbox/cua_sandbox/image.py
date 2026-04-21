@@ -292,6 +292,7 @@ class Image:
         keystore_alias: str = "android",
         keystore_password: str = "android",
         builder: str = "pwa2apk",
+        push_timeout: Optional[float] = None,
     ) -> "Image":
         """Build an APK from a PWA manifest URL and install it (Android only).
 
@@ -319,6 +320,9 @@ class Image:
             keystore_password: Password for both the store and the key
                                (default ``"android"``).
             builder:      ``"pwa2apk"`` (default) or ``"bubblewrap"``.
+            push_timeout: Optional seconds for the ``write_bytes`` ``adb push``
+                          of the built APK.  When ``None`` the server default
+                          applies.
         """
         if builder not in ("pwa2apk", "bubblewrap"):
             raise ValueError(f"builder must be 'pwa2apk' or 'bubblewrap', got {builder!r}")
@@ -330,6 +334,8 @@ class Image:
             layer["keystore"] = keystore
         layer["keystore_alias"] = keystore_alias
         layer["keystore_password"] = keystore_password
+        if push_timeout is not None:
+            layer["push_timeout"] = push_timeout
         return self._add_layer(layer)
 
     def uv_install(self, *packages: str) -> Image:

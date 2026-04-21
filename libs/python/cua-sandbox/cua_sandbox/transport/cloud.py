@@ -549,11 +549,13 @@ class CloudTransport(Transport):
 
         apk_bytes = Path(apk_path).read_bytes()
         dest = "/data/local/tmp/cua_pwa.apk"
-        await self._inner.send(
-            "write_bytes",
-            path=dest,
-            content_b64=base64.b64encode(apk_bytes).decode(),
-        )
+        write_kwargs: dict = {
+            "path": dest,
+            "content_b64": base64.b64encode(apk_bytes).decode(),
+        }
+        if "push_timeout" in layer:
+            write_kwargs["timeout"] = layer["push_timeout"]
+        await self._inner.send("write_bytes", **write_kwargs)
         logger.debug(f"[cloud] installing APK: pm install -r {dest}")
         await self._inner.send(
             "run_command",

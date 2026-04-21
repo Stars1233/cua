@@ -797,22 +797,27 @@ class AndroidFileHandler(BaseFileHandler):
         else:
             raise RuntimeError(f"Failed to write file: {output}")
 
-    async def write_bytes(self, path: str, content_b64: str) -> Dict[str, Any]:
-        """Write binary content to file."""
-        # Decode base64 and write to temp file, then push to device
+    async def write_bytes(
+        self, path: str, content_b64: str, timeout: Optional[float] = None
+    ) -> Dict[str, Any]:
+        """Write binary content to file.
+
+        ``timeout`` (seconds) is forwarded to the underlying ``adb push``
+        when set; otherwise the ``CommandExecutor`` default applies.
+        """
         import os
         import tempfile
 
         content_bytes = base64.b64decode(content_b64)
-
-        # Create temp file
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
             tmp.write(content_bytes)
             tmp_path = tmp.name
 
         try:
-            # Push file to device
-            success, output = await adb_exec.run("push", tmp_path, path, decode=True)
+            run_kwargs: Dict[str, Any] = {"decode": True}
+            if timeout is not None:
+                run_kwargs["timeout"] = timeout
+            success, output = await adb_exec.run("push", tmp_path, path, **run_kwargs)
             if success:
                 return {}
             else:
