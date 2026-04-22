@@ -42,6 +42,7 @@ class CloudTransport(Transport):
         disk_gb: Optional[int] = None,
         region: str = "us-east-1",
         time_to_start: Optional[float] = None,
+        request_timeout: Optional[float] = None,
     ):
         self._name = name
         self._api_key_override = api_key
@@ -52,6 +53,7 @@ class CloudTransport(Transport):
         self._disk_gb = disk_gb
         self._region = region
         self._time_to_start = time_to_start if time_to_start is not None else _POLL_TIMEOUT
+        self._request_timeout = request_timeout if request_timeout is not None else 30.0
         self._inner: Optional[HTTPTransport] = None
         self._api_client: Optional[httpx.AsyncClient] = None
 
@@ -136,7 +138,9 @@ class CloudTransport(Transport):
             # snapshot, so auth must use the source instance name.
             snap_source = getattr(self._image, "_snapshot_source", None) if self._image else None
             auth_name = snap_source["instance"] if snap_source else self._name
-            self._inner = HTTPTransport(cs_url, api_key=api_key, container_name=auth_name)
+            self._inner = HTTPTransport(
+                cs_url, api_key=api_key, container_name=auth_name, timeout=self._request_timeout
+            )
             await self._inner.connect()
             await self._wait_for_server_ready()
 

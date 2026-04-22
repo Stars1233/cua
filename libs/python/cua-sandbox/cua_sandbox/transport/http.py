@@ -62,7 +62,17 @@ class HTTPTransport(Transport):
         body = {"command": command}
         if params:
             body["params"] = params
-        resp = await self._client.post("/cmd", json=body)
+        # When the caller passes a server-side timeout (e.g. push_timeout for
+        # write_bytes, or timeout for run_command), the server may legitimately
+        # take that long to respond.  Set the httpx read timeout to match so the
+        # client doesn't drop the connection before the server finishes.
+        server_timeout = (params or {}).get("timeout")
+        if server_timeout is not None:
+            # Add 10s headroom so the server timeout fires before the client one
+            req_timeout = httpx.Timeout(self._timeout, read=float(server_timeout) + 10)
+        else:
+            req_timeout = None  # use client default
+        resp = await self._client.post("/cmd", json=body, timeout=req_timeout)
         resp.raise_for_status()
         return self._parse_sse(resp.text)
 

@@ -408,6 +408,7 @@ class Sandbox:
         disk_gb: Optional[int] = None,
         region: str = "us-east-1",
         time_to_start: Optional[float] = None,
+        request_timeout: Optional[float] = None,
         telemetry_enabled: bool = True,
     ) -> "Sandbox":
         """Provision a new persistent sandbox and return it connected.
@@ -428,6 +429,10 @@ class Sandbox:
             region: Cloud region (default ``"us-east-1"``).
             time_to_start: Max seconds to wait for the VM to become reachable
                 (default 600). Only applies to cloud sandboxes.
+            request_timeout: Default HTTP request timeout in seconds for
+                commands sent to the computer-server (default 30, cloud only).
+                Individual commands with a server-side timeout automatically
+                extend the client timeout to match.
             telemetry_enabled: Set to False to disable telemetry for this instance.
 
         Example::
@@ -449,6 +454,7 @@ class Sandbox:
             disk_gb=disk_gb,
             region=region,
             time_to_start=time_to_start,
+            request_timeout=request_timeout,
             telemetry_enabled=telemetry_enabled,
         )
 
@@ -526,6 +532,7 @@ class Sandbox:
         disk_gb: Optional[int] = None,
         region: str = "us-east-1",
         time_to_start: Optional[float] = None,
+        request_timeout: Optional[float] = None,
         telemetry_enabled: bool = True,
     ) -> AsyncIterator["Sandbox"]:
         """Create an ephemeral sandbox that is automatically destroyed on exit.
@@ -542,6 +549,10 @@ class Sandbox:
             region: Cloud region (default ``"us-east-1"``).
             time_to_start: Max seconds to wait for the VM to become reachable
                 (default 600). Only applies to cloud sandboxes.
+            request_timeout: Default HTTP request timeout in seconds for
+                commands sent to the computer-server (default 30, cloud only).
+                Individual commands with a server-side timeout automatically
+                extend the client timeout to match.
 
         Example::
 
@@ -561,6 +572,7 @@ class Sandbox:
             disk_gb=disk_gb,
             region=region,
             time_to_start=time_to_start,
+            request_timeout=request_timeout,
             telemetry_enabled=telemetry_enabled,
         )
         try:
@@ -975,6 +987,7 @@ class Sandbox:
         disk_gb: Optional[int] = None,
         region: str = "us-east-1",
         time_to_start: Optional[float] = None,
+        request_timeout: Optional[float] = None,
         telemetry_enabled: bool = True,
     ) -> "Sandbox":
         """Internal workhorse — all public factories delegate here."""
@@ -1041,6 +1054,7 @@ class Sandbox:
                     disk_gb=disk_gb,
                     region=region,
                     time_to_start=time_to_start,
+                    request_timeout=request_timeout,
                 )
                 sb = cls(
                     transport, name=name, _ephemeral=ephemeral, _telemetry_enabled=telemetry_enabled
