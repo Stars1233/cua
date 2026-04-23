@@ -12,6 +12,7 @@ node_modules/*
 .Python
 build/
 !libs/lume/scripts/build/
+!libs/cua-driver/scripts/build/
 develop-eggs/
 dist/
 downloads/
