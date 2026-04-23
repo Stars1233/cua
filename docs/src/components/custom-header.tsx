@@ -18,6 +18,8 @@ import LumeIconBlack from '@/assets/lume-icon-black.svg';
 import LumeIconWhite from '@/assets/lume-icon-white.svg';
 import CuaBotLogoBlack from '@/assets/cuabot-logo-black.svg';
 import CuaBotLogoWhite from '@/assets/cuabot-logo-white.svg';
+import CuaDriverIconBlack from '@/assets/cua-driver-icon-black.png';
+import CuaDriverIconWhite from '@/assets/cua-driver-icon-white.png';
 
 const docsSites = [
   {
@@ -37,6 +39,32 @@ const docsSites = [
       { name: 'Guide', href: '/cua/guide/get-started/what-is-cua', prefix: '/cua/guide' },
       { name: 'Examples', href: '/cua/examples/automation/form-filling', prefix: '/cua/examples' },
       { name: 'Reference', href: '/cua/reference/computer-sdk', prefix: '/cua/reference' },
+    ],
+  },
+  {
+    name: 'Cua Driver',
+    label: 'Docs',
+    href: '/cua-driver/guide/getting-started/introduction',
+    prefix: '/cua-driver',
+    isDefault: false,
+    description: 'Background computer-use',
+    logoBlack: CuaDriverIconBlack,
+    logoWhite: CuaDriverIconWhite,
+    iconWidth: 24,
+    iconHeight: 24,
+    dropdownIconWidth: 28,
+    dropdownIconHeight: 28,
+    navTabs: [
+      {
+        name: 'Guide',
+        href: '/cua-driver/guide/getting-started/introduction',
+        prefix: '/cua-driver/guide',
+      },
+      {
+        name: 'Reference',
+        href: '/cua-driver/reference/cli-reference',
+        prefix: '/cua-driver/reference',
+      },
     ],
   },
   {

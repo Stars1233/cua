@@ -1,0 +1,432 @@
+---
+title: MCP Tools
+description: Reference for every MCP tool cua-driver exposes
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+`cua-driver` exposes 28 MCP tools through a single stdio server (`cua-driver mcp`). Every tool is also callable from the shell as `cua-driver <name> '<JSON-args>'`.
+
+Tool names are `snake_case`. Responses are MCP `CallTool.Result` envelopes: a text content block prefixed with a `✅` summary (or the error reason on failure), plus optional image or structured-content blocks on tools that produce them. See the [CLI reference](/cua-driver/reference/cli-reference) for CLI-specific flags like `--raw` and `--image-out`.
+
+<Callout type="info">
+  Tool names here match the CLI form exactly. `cua-driver list_apps` and the MCP `list_apps` tool run the same code path.
+</Callout>
+
+## Discovery
+
+### list_apps
+
+List macOS apps, both running and installed-but-not-running, with pid / bundle id / active state.
+
+**Arguments:** none.
+
+```json
+{}
+```
+
+### list_windows
+
+List every layer-0 top-level window currently known to WindowServer, including off-screen ones (hidden-launched, minimized, on another Space).
+
+**Arguments:**
+
+- `pid` (integer, optional): Pid filter. When set, only this pid's windows are returned.
+- `on_screen_only` (boolean, optional): When true, drop windows that aren't currently on the user's Space. Default false.
+
+```json
+{"pid": 844, "on_screen_only": true}
+```
+
+### get_screen_size
+
+Return the main display's logical size in points plus the backing scale factor. Retina displays report `2.0`.
+
+**Arguments:** none.
+
+```json
+{}
+```
+
+### get_cursor_position
+
+Return the current mouse cursor position in screen points (top-left origin).
+
+**Arguments:** none.
+
+```json
+{}
+```
+
+### get_accessibility_tree
+
+Lightweight desktop snapshot: running regular apps and on-screen visible windows with bounds, z-order, and owner pid. For a single window's internal UI, use `get_window_state`.
+
+**Arguments:** none.
+
+```json
+{}
+```
+
+### screenshot
+
+Raw ScreenCaptureKit capture. Full main display, or a single window when `window_id` is set. Returns an image content block plus a text summary listing on-screen windows.
+
+**Arguments:**
+
+- `format` (string, optional): `"png"` or `"jpeg"`. Default `"png"`.
+- `quality` (integer, optional): JPEG quality 1-95; ignored for png.
+- `window_id` (integer, optional): CGWindowID / `kCGWindowNumber` to capture just that window.
+
+```json
+{"format": "jpeg", "quality": 80, "window_id": 10725}
+```
+
+### get_window_state
+
+Snapshot a single window: AX element tree plus a screenshot. Populates the per-pid, per-window `element_index` cache that mouse and keyboard tools consume.
+
+**Arguments:**
+
+- `pid` (integer, required): Process ID from `list_apps`.
+- `window_id` (integer, required): CGWindowID of the target window. Must belong to `pid`. Enumerate via `list_windows` or read from `launch_app`'s `windows` array.
+- `query` (string, optional): Case-insensitive substring. When set, `tree_markdown` only contains matching lines plus their ancestor chain; element indices and `element_count` are unchanged.
+
+```json
+{"pid": 844, "window_id": 10725, "query": "save"}
+```
+
+<Callout type="info">
+  Response shape varies by `capture_mode` (`som` / `ax` / `vision`). Default is `som`. See the [CLI reference](/cua-driver/reference/cli-reference) for the full matrix.
+</Callout>
+
+## App lifecycle
+
+### launch_app
+
+Launch an app hidden (no focus steal) and return its pid plus the initial `windows` array. Either `bundle_id` or `name` must be provided.
+
+**Arguments:**
+
+- `bundle_id` (string, optional): App bundle identifier, e.g. `com.apple.calculator`.
+- `name` (string, optional): App display name. Used only when `bundle_id` is absent.
+- `urls` (array of string, optional): `file://` / `http(s)://` URLs (or plain paths with `~` expansion) handed to the launched app via `application(_:open:)`. For Finder, a folder URL opens a backgrounded window rooted there. Apps that don't implement `application(_:open:)` launch normally and ignore these.
+
+```json
+{"bundle_id": "com.apple.finder", "urls": ["~/Documents"]}
+```
+
+### check_permissions
+
+Report TCC permission status for Accessibility and Screen Recording.
+
+**Arguments:**
+
+- `prompt` (boolean, optional): If true, raise the system permission prompts for any missing grants. Otherwise the call is purely read-only.
+
+```json
+{"prompt": true}
+```
+
+## Mouse
+
+All mouse tools accept either the `element_index` path (preferred; works on backgrounded windows) or a pixel `(x, y)` path. Pixel coordinates are in window-local screenshot pixels, the same space as the PNG `get_window_state` returns.
+
+### click
+
+Left-click by element or pixel.
+
+**Arguments:**
+
+- `pid` (integer, required): Target process ID.
+- `element_index` (integer, optional): Element index from the last `get_window_state` for the same `(pid, window_id)`. Routes through the AX action path. Requires `window_id`.
+- `window_id` (integer, optional): CGWindowID for the window whose `get_window_state` produced `element_index`. Required in the element path; ignored in the pixel path.
+- `x`, `y` (number, optional): Pixel coordinates (top-left origin). Must be provided together.
+- `action` (string, optional): AX action: `press` | `show_menu` | `pick` | `confirm` | `cancel` | `open`. Default `press`. Element path only.
+- `modifier` (array of string, optional): Modifiers held during the click: `cmd` / `shift` / `option` / `ctrl`. Pixel path only.
+- `count` (integer, optional): Click count 1-3 (single, double, triple). Default 1. Pixel path only.
+- `from_zoom` (boolean, optional): When true, `x`, `y` are pixel coordinates in the last `zoom` image for this pid; the driver maps them back to window coordinates automatically.
+- `debug_image_out` (string, optional): Absolute path. On a pixel-addressed click, the tool captures the window at current `max_image_dimension`, draws a red crosshair at the received `(x, y)`, and writes the PNG here. Use to verify coordinate-space correctness. Incompatible with `from_zoom`.
+
+```json
+{"pid": 844, "window_id": 10725, "element_index": 14}
+```
+
+### double_click
+
+Double-click by element (routes through `AXOpen` when advertised, else pixel double-click at the element's center) or by pixel.
+
+**Arguments:**
+
+- `pid` (integer, required): Target process ID.
+- `element_index` (integer, optional): Requires `window_id`.
+- `window_id` (integer, optional): Required when `element_index` is used.
+- `x`, `y` (number, optional): Pixel coordinates (top-left origin). Provided together.
+- `modifier` (array of string, optional): `cmd` / `shift` / `option` / `ctrl`. Pixel path only.
+
+```json
+{"pid": 844, "x": 320, "y": 180}
+```
+
+### right_click
+
+Right-click by element (routes through `AXShowMenu`) or by pixel.
+
+**Arguments:**
+
+- `pid` (integer, required): Target process ID.
+- `element_index` (integer, optional): Requires `window_id`.
+- `window_id` (integer, optional): Required when `element_index` is used.
+- `x`, `y` (number, optional): Pixel coordinates (top-left origin). Provided together.
+- `modifier` (array of string, optional): `cmd` / `shift` / `option` / `ctrl`. Pixel path only.
+
+```json
+{"pid": 844, "window_id": 10725, "element_index": 7}
+```
+
+### move_cursor
+
+Warp the real mouse cursor to a screen-point coordinate. Does not click.
+
+**Arguments:**
+
+- `x` (integer, required): X in screen points.
+- `y` (integer, required): Y in screen points.
+
+```json
+{"x": 640, "y": 400}
+```
+
+### scroll
+
+Synthesize PageUp/PageDown/arrow keystrokes against the target pid. When `element_index` is provided, the element is focused before the keystrokes fire.
+
+**Arguments:**
+
+- `pid` (integer, required): Target process ID.
+- `direction` (string, required): `up` | `down` | `left` | `right`.
+- `amount` (integer, optional): Keystroke repetitions, 1-50. Default 3.
+- `by` (string, optional): `line` | `page`. Default `line`.
+- `element_index` (integer, optional): Requires `window_id`.
+- `window_id` (integer, optional): Required when `element_index` is used.
+
+```json
+{"pid": 844, "direction": "down", "amount": 5, "by": "page"}
+```
+
+## Keyboard and text
+
+All keyboard tools are pid-scoped: the event is delivered to the target process regardless of current frontmost app.
+
+### press_key
+
+Single key press, optionally with modifiers. Delivered via `CGEvent.postToPid`.
+
+**Arguments:**
+
+- `pid` (integer, required): Target process ID.
+- `key` (string, required): Key name: `return`, `tab`, `escape`, `up`, `down`, `left`, `right`, `space`, `delete`, `home`, `end`, `pageup`, `pagedown`, `f1`-`f12`, letter, digit.
+- `modifiers` (array of string, optional): `cmd` / `shift` / `option` / `ctrl` / `fn` held while the key is pressed.
+- `element_index` (integer, optional): When present, the element is focused before the key fires. Requires `window_id`.
+- `window_id` (integer, optional): Required when `element_index` is used.
+
+```json
+{"pid": 844, "key": "return"}
+```
+
+### hotkey
+
+Modifier combo as a single array, e.g. `["cmd", "c"]`. Requires at least two entries (one or more modifiers plus one non-modifier key).
+
+**Arguments:**
+
+- `pid` (integer, required): Target process ID.
+- `keys` (array of string, required): Modifier(s) and one non-modifier key.
+
+```json
+{"pid": 844, "keys": ["cmd", "shift", "s"]}
+```
+
+### type_text
+
+Insert text at the target's current cursor via `AXSelectedText`. Fast (single AX write) but skipped by apps with custom text layers; for Chromium / Electron inputs use `type_text_chars`.
+
+**Arguments:**
+
+- `pid` (integer, required): Target process ID.
+- `text` (string, required): Text to insert at the target's cursor.
+- `element_index` (integer, optional): When present, the element is focused before the write. Requires `window_id`.
+- `window_id` (integer, optional): Required when `element_index` is used.
+
+```json
+{"pid": 844, "window_id": 10725, "element_index": 12, "text": "hello"}
+```
+
+### type_text_chars
+
+Character-by-character input via `CGEvent.postToPid`. Slower than `type_text` but reaches Chromium and Electron inputs that ignore AX writes.
+
+**Arguments:**
+
+- `pid` (integer, required): Target process ID.
+- `text` (string, required): Text to type into the target's focused element.
+- `delay_ms` (integer, optional): Milliseconds between characters, 0-200. Default 30.
+
+```json
+{"pid": 844, "text": "hello world", "delay_ms": 40}
+```
+
+## Element values
+
+### set_value
+
+Write an element's `AXValue` directly. For sliders, steppers, text fields, and similar controls where AX coerces the string to the native type.
+
+**Arguments:**
+
+- `pid` (integer, required): Target process ID.
+- `window_id` (integer, required): CGWindowID for the window whose `get_window_state` produced `element_index`.
+- `element_index` (integer, required): Element index from the last `get_window_state` for the same `(pid, window_id)`.
+- `value` (string, required): New value. AX coerces it to the element's native type.
+
+```json
+{"pid": 844, "window_id": 10725, "element_index": 9, "value": "42"}
+```
+
+## Zoom
+
+### zoom
+
+Native-resolution crop of a previously captured window region. Pass the region in resized-image pixel coordinates (same space `get_window_state` reports); the tool scales back to the source resolution, pads by 20% on each side, captures the frontmost window of `pid`, and returns the crop.
+
+**Arguments:**
+
+- `pid` (integer, required): Target process ID.
+- `x1` (number, required): Left edge of the region (resized-image pixels).
+- `y1` (number, required): Top edge of the region (resized-image pixels).
+- `x2` (number, required): Right edge of the region (resized-image pixels).
+- `y2` (number, required): Bottom edge of the region (resized-image pixels).
+
+```json
+{"pid": 844, "x1": 200, "y1": 100, "x2": 400, "y2": 250}
+```
+
+After `zoom`, pass `from_zoom: true` to `click` with pixel coordinates in the zoomed image; the driver maps them back automatically.
+
+## Agent cursor overlay
+
+The agent cursor is an optional visual overlay (Bezier-arc glide + click ripple + dwell) drawn on top of every synthetic click. Motion parameters persist across restarts via the config file.
+
+### get_agent_cursor_state
+
+Read the current overlay configuration: enabled flag, motion options, glide / dwell / idle-hide timings.
+
+**Arguments:** none.
+
+```json
+{}
+```
+
+### set_agent_cursor_enabled
+
+Toggle the overlay. Persists to config.
+
+**Arguments:**
+
+- `enabled` (boolean, required): True to show; false to hide.
+
+```json
+{"enabled": true}
+```
+
+### set_agent_cursor_motion
+
+Tune the Bezier-arc + spring motion knobs. All fields are optional; omitted fields keep their current value.
+
+**Arguments:**
+
+- `start_handle` (number, optional): Start-handle fraction in [0, 1]. Default 0.3.
+- `end_handle` (number, optional): End-handle fraction in [0, 1]. Default 0.3.
+- `arc_size` (number, optional): Arc deflection as fraction of path length. Default 0.25.
+- `arc_flow` (number, optional): Asymmetry bias in [-1, 1]. Default 0.
+- `spring` (number, optional): Settle damping in [0.3, 1]. Default 0.72.
+- `glide_duration_ms` (number, optional): Flight duration per click, 50-5000. Default 750.
+- `dwell_after_click_ms` (number, optional): Pause after the click ripple, 0-5000. Default 400.
+- `idle_hide_ms` (number, optional): Overlay linger after last click before auto-hide, 100-60000. Default 3000.
+
+```json
+{"arc_size": 0.3, "glide_duration_ms": 900}
+```
+
+## Config
+
+Persistent settings live at `~/Library/Application Support/Cua Driver/config.json`. Writes route through the running daemon when reachable so live state (e.g. `AgentCursor.shared`) picks up changes without a restart.
+
+### get_config
+
+Return the current config as pretty-printed JSON, identical to the on-disk shape.
+
+**Arguments:** none.
+
+```json
+{}
+```
+
+### set_config
+
+Write a single leaf field identified by a dotted `snake_case` path.
+
+**Arguments:**
+
+- `key` (string, required): Dotted `snake_case` path to a leaf config field, e.g. `agent_cursor.enabled`.
+- `value` (required): New value. JSON type depends on the key.
+
+```json
+{"key": "capture_mode", "value": "ax"}
+```
+
+Supported keys and ranges: see the [CLI reference](/cua-driver/reference/cli-reference#cua-driver-config).
+
+## Recording and replay
+
+The trajectory recorder captures every action-tool call (`click`, `right_click`, `scroll`, `type_text`, `type_text_chars`, `press_key`, `hotkey`, `set_value`) into numbered turn folders. Recordings can be replayed turn-by-turn.
+
+### get_recording_state
+
+Report whether the recorder is currently enabled, the output directory, and the next turn number.
+
+**Arguments:** none.
+
+```json
+{}
+```
+
+Structured-content response: `{"enabled": bool, "next_turn": int, "output_dir"?: string}`.
+
+### set_recording
+
+Toggle the recorder. When enabling, `output_dir` is required.
+
+**Arguments:**
+
+- `enabled` (boolean, required): True to start; false to stop.
+- `output_dir` (string, optional): Absolute or `~`-rooted directory for turn folders. Required when `enabled=true`.
+- `video_experimental` (boolean, optional): Experimental: also capture the main display to `<output_dir>/recording.mp4` via SCStream (H.264, 30fps, no audio, no cursor). Off by default. Ignored when `enabled=false`.
+
+```json
+{"enabled": true, "output_dir": "~/cua-trajectories/demo1"}
+```
+
+### replay_trajectory
+
+Re-invoke every turn's tool call in lexical order against the live system.
+
+**Arguments:**
+
+- `dir` (string, required): Trajectory directory previously written by `set_recording`. Absolute or `~`-rooted.
+- `delay_ms` (integer, optional): Milliseconds to sleep between turns, 0-10000. Default 500.
+- `stop_on_error` (boolean, optional): Stop replay on the first tool-call error. Default true; set false to best-effort through the full trajectory.
+
+```json
+{"dir": "~/cua-trajectories/demo1", "delay_ms": 800, "stop_on_error": false}
+```

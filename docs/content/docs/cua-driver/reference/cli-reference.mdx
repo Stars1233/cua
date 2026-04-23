@@ -1,0 +1,367 @@
+---
+title: CLI Reference
+description: Command Line Interface reference for Cua Driver
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { VersionHeader } from '@/components/version-selector';
+
+<VersionHeader
+  versions={[{"version":"0.1","href":"/cua-driver/reference/cli-reference","isCurrent":true}]}
+  currentVersion="0.1"
+  fullVersion="0.1.0"
+  packageName="cua-driver"
+  installCommand="curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install.sh | bash"
+/>
+
+`cua-driver` is a single-binary CLI. Two naming conventions divide its surface:
+
+- **Tool names are `snake_case`** (`launch_app`, `get_window_state`, `click`). Invoke them as `cua-driver <tool> '<JSON-args>'` — the CLI routes through the same `ToolRegistry` the MCP server uses.
+- **Management subcommands are `kebab-case`** (`list-tools`, `describe`, `mcp-config`). These never take JSON args.
+
+Different separators mean no ambiguity. Unknown first-positional args dispatch to the `call` subcommand automatically, so `cua-driver list_apps` is shorthand for `cua-driver call list_apps`.
+
+## Quick start
+
+```bash
+# Start the persistent daemon (required for element_index workflows).
+open -n -g -a CuaDriver --args serve
+
+# Drive an app.
+cua-driver launch_app '{"bundle_id":"com.apple.calculator"}'
+cua-driver get_window_state '{"pid":844,"window_id":10725}'
+cua-driver click '{"pid":844,"window_id":10725,"element_index":14}'
+
+# Stop the daemon.
+cua-driver stop
+```
+
+## Tool dispatch
+
+### cua-driver call
+
+Invoke any MCP tool from the shell.
+
+```bash
+cua-driver call <tool-name> '<JSON-args>'
+# Shorthand — any unknown first positional arg auto-prefixes `call`:
+cua-driver <tool-name> '<JSON-args>'
+```
+
+**Arguments:**
+
+- `<tool-name>` — Name of the tool to invoke. Run `cua-driver list-tools` for the full list.
+- `<json-args>` — JSON object matching the tool's `inputSchema`. Omit when stdin is a pipe (JSON is read from stdin) or when the tool takes no arguments.
+
+**Flags:**
+
+- `--raw` — Print the raw `CallTool.Result` JSON (content + structuredContent + isError) instead of unwrapping `structuredContent`.
+- `--image-out <path>` — Write the first image content block from the response to `path` (PNG bytes). The default text formatter would drop image content otherwise.
+- `--compact` — Emit minified JSON instead of pretty-printed.
+- `--no-daemon` — Skip the running daemon and run the tool in-process. Element-indexed workflows fail without a daemon because the per-pid cache dies between CLI invocations.
+- `--socket <path>` — Override the daemon Unix socket path.
+
+**Examples:**
+
+```bash
+cua-driver call list_apps
+cua-driver call launch_app '{"bundle_id":"com.apple.finder"}'
+echo '{"pid":844,"window_id":1234}' | cua-driver call get_window_state
+cua-driver get_window_state '{"pid":844,"window_id":1234}' --image-out /tmp/shot.png
+```
+
+### cua-driver list-tools
+
+List every MCP tool exposed by the driver with a one-line summary.
+
+```bash
+cua-driver list-tools
+```
+
+**Flags:** `--no-daemon`, `--socket <path>`.
+
+### cua-driver describe
+
+Print a tool's full description and JSON input schema.
+
+```bash
+cua-driver describe <tool-name>
+```
+
+**Flags:** `--compact`, `--no-daemon`, `--socket <path>`.
+
+## Daemon management
+
+### cua-driver serve
+
+Run cua-driver as a long-running daemon on a Unix domain socket. Required for any workflow that uses `element_index` dispatch: the per-pid element cache lives in-process and survives only between CLI calls routed to the same daemon.
+
+```bash
+# Recommended form — routes through LaunchServices for correct TCC context.
+open -n -g -a CuaDriver --args serve
+
+# Alternate — auto-relaunches via open when TCC context is wrong.
+cua-driver serve &
+```
+
+**Flags:**
+
+- `--socket <path>` — Override the Unix socket path. Default: `~/Library/Caches/cua-driver/cua-driver.sock`.
+- `--no-relaunch` — Stay in the current process instead of relaunching via LaunchServices. Also toggleable via `CUA_DRIVER_NO_RELAUNCH=1`. Use when the calling context already has the right TCC responsibility.
+
+### cua-driver stop
+
+Ask the running daemon to exit gracefully. Polls for the socket file to vanish (up to 2s) as proof of clean shutdown.
+
+```bash
+cua-driver stop
+```
+
+**Flags:** `--socket <path>`.
+
+### cua-driver status
+
+Report whether a daemon is currently reachable. Probes by sending a trivial `list` request — connecting alone doesn't prove the peer speaks the protocol.
+
+```bash
+cua-driver status
+# cua-driver daemon is running
+#   socket: /Users/you/Library/Caches/cua-driver/cua-driver.sock
+#   pid: 12345
+```
+
+**Flags:** `--socket <path>`, `--pid-file <path>`.
+
+### cua-driver mcp
+
+Run the stdio MCP server. MCP clients (Claude Code, Cursor, custom SDK clients) spawn this on demand.
+
+```bash
+cua-driver mcp
+```
+
+No flags. Use `cua-driver mcp-config` to generate a paste-able client config snippet.
+
+### cua-driver mcp-config
+
+Print an MCP client config snippet pointing at this binary.
+
+```bash
+cua-driver mcp-config
+# {
+#   "mcpServers": {
+#     "cua-driver": {
+#       "command": "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
+#       "args": ["mcp"]
+#     }
+#   }
+# }
+```
+
+Paste into `~/.claude/mcp.json` (Claude Code) or the equivalent for your MCP client.
+
+## Trajectory recording
+
+### cua-driver recording start
+
+Enable the trajectory recorder. Every subsequent action-tool call (`click`, `right_click`, `scroll`, `type_text`, `type_text_chars`, `press_key`, `hotkey`, `set_value`) writes a numbered turn folder under `<output-dir>`.
+
+```bash
+cua-driver recording start ~/cua-trajectories/demo1
+```
+
+**Arguments:**
+
+- `<output-dir>` — Directory to write turn folders into. Expands `~`; created if missing.
+
+**Flags:**
+
+- `--video-experimental` — Also capture the main display to `<output-dir>/recording.mp4` via SCStream (H.264, 30fps, no audio, no cursor). Experimental.
+- `--socket <path>` — Override the daemon socket path.
+
+Requires a running daemon.
+
+### cua-driver recording stop
+
+Disable recording. Prints the captured turn count and directory.
+
+```bash
+cua-driver recording stop
+# Recording disabled (23 turns captured in /Users/you/cua-trajectories/demo1)
+```
+
+### cua-driver recording status
+
+Report whether recording is currently enabled.
+
+```bash
+cua-driver recording status
+# Recording: enabled
+# Output dir: /Users/you/cua-trajectories/demo1
+# Next turn: 24
+```
+
+### cua-driver recording render
+
+Render a recording directory to a zoomed-on-click MP4. Post-processes the captured `recording.mp4`, `cursor.jsonl`, and `turn-*/action.json` files.
+
+```bash
+cua-driver recording render ~/cua-rec --output /tmp/out.mp4
+cua-driver recording render ~/cua-rec --output /tmp/baseline.mp4 --no-zoom
+cua-driver recording render ~/cua-rec --output /tmp/out.mp4 --scale 2.5
+```
+
+**Arguments:**
+
+- `<input-dir>` — Recording directory (contains `session.json`, `recording.mp4`, `cursor.jsonl`, `turn-*/`).
+
+**Flags:**
+
+- `--output <path>` — Destination MP4 path. Overwrites any existing file.
+- `--no-zoom` — Skip the zoom curve and re-encode the input as-is. Useful as a baseline check.
+- `--scale <factor>` — Zoom factor applied to each click event. Default `2.0`. Set to `1.0` to disable zoom; `2.0` is 2× magnification.
+
+<Callout type="info">
+  `recording render` runs in the CLI process directly — it does not require a running daemon.
+</Callout>
+
+## Configuration
+
+### cua-driver config
+
+Read and write persistent settings at `~/Library/Application Support/Cua Driver/config.json`.
+
+```bash
+cua-driver config                        # print full config
+cua-driver config get <key>
+cua-driver config set <key> <value>
+cua-driver config reset                  # overwrite with defaults
+```
+
+**Supported keys:**
+
+- `capture_mode` — `som` | `ax` | `vision`. Default `som`.
+- `max_image_dimension` — integer. PNG long-side cap. Default 1568.
+- `agent_cursor.enabled` — boolean.
+- `agent_cursor.motion.start_handle` — number in [0, 1].
+- `agent_cursor.motion.end_handle` — number in [0, 1].
+- `agent_cursor.motion.arc_size` — number (fraction of path length).
+- `agent_cursor.motion.arc_flow` — number in [-1, 1].
+- `agent_cursor.motion.spring` — number in [0.3, 1.0].
+
+**Flags on `set`:** `--socket <path>`.
+
+Writes route through the daemon when one's reachable so live state (e.g. `AgentCursor.shared`) picks up the change without a restart.
+
+### cua-driver config telemetry
+
+Manage anonymous telemetry.
+
+```bash
+cua-driver config telemetry status
+cua-driver config telemetry enable
+cua-driver config telemetry disable
+```
+
+Environment override: `CUA_DRIVER_TELEMETRY_ENABLED=0|1`.
+
+### cua-driver config updates
+
+Manage automatic updates.
+
+```bash
+cua-driver config updates status
+cua-driver config updates enable
+cua-driver config updates disable
+```
+
+Environment override: `CUA_DRIVER_AUTO_UPDATE_ENABLED=0|1`.
+
+## Diagnostics
+
+### cua-driver diagnose
+
+Print a paste-able state report for support. Covers: running-process identity (path, bundle id, pid, cdhash), TCC probe results, install layout (`/Applications/CuaDriver.app` + codesign info, `/usr/local/bin/cua-driver` symlink resolution), TCC database rows for `com.trycua.driver`, and config + state paths.
+
+```bash
+cua-driver diagnose
+```
+
+Use this when filing an issue about permissions or install problems.
+
+### cua-driver update
+
+Trigger a manual update check and optionally apply updates. Refuses to run when auto-update is disabled.
+
+```bash
+cua-driver update
+cua-driver update --silent
+```
+
+**Flags:** `--silent` — apply updates silently without prompting.
+
+## Global options
+
+Available on all commands:
+
+- `--help` — Show help information.
+- `--version` — Show version number.
+
+## Tool inventory
+
+The following MCP tools are callable via `cua-driver <tool>`. For input schemas and response shapes, see the [MCP tools reference](/cua-driver/reference/mcp-tools).
+
+**Discovery and permissions**
+
+- `list_apps` — running + installed apps with pid / bundle id / active state.
+- `list_windows` — every layer-0 top-level window (including off-screen).
+- `check_permissions` — Accessibility + Screen Recording TCC status.
+- `get_screen_size` — main display size in points + scale factor.
+- `get_cursor_position` — current mouse cursor position.
+- `get_accessibility_tree` — lightweight desktop snapshot (apps + visible windows).
+
+**App lifecycle**
+
+- `launch_app` — launch hidden; returns pid + windows array.
+
+**Snapshot**
+
+- `get_window_state` — per-window AX tree + screenshot. Populates the element_index cache.
+- `screenshot` — raw ScreenCaptureKit capture. Full display or single window.
+- `zoom` — native-resolution crop of a previously captured window region.
+
+**Mouse**
+
+- `click` — left-click by `element_index` or `(x, y)`.
+- `double_click` — double-click by `element_index` (AXOpen) or `(x, y)`.
+- `right_click` — right-click by `element_index` (AXShowMenu) or `(x, y)`.
+- `move_cursor` — warp the real cursor to `(x, y)`.
+
+**Keyboard**
+
+- `type_text` — insert text via `AXSelectedText`. Pid-scoped.
+- `type_text_chars` — character-by-character via `CGEvent.postToPid`. Reaches Chromium/Electron inputs.
+- `press_key` — single key press. Pid-scoped.
+- `hotkey` — modifier combo (e.g. `["cmd","c"]`). Pid-scoped.
+
+**Element attributes**
+
+- `set_value` — write an element's `AXValue` directly. For sliders, steppers, and text fields.
+- `scroll` — synthesize PageUp/PageDown/arrow keystrokes against the target pid.
+
+**Agent cursor overlay**
+
+- `set_agent_cursor_enabled` — toggle the visual overlay.
+- `set_agent_cursor_motion` — tune the Bezier-arc + spring motion knobs.
+- `get_agent_cursor_state` — read the current overlay configuration.
+
+**Config**
+
+- `get_config` — report persistent config as JSON.
+- `set_config` — write a single dotted-path config key.
+
+**Recording**
+
+- `set_recording` — toggle the trajectory recorder.
+- `get_recording_state` — report recorder state.
+- `replay_trajectory` — re-invoke every turn's tool call in lexical order.

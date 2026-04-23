@@ -1,0 +1,140 @@
+---
+title: Installation
+description: Install Cua Driver on your Mac
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Install Cua Driver with a single command:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install.sh)"
+```
+
+The installer drops `CuaDriver.app` into `/Applications` and symlinks the binary at `/usr/local/bin/cua-driver`. Both are signed with the same bundle id (`com.trycua.driver`) so TCC grants survive rebuilds.
+
+<Callout type="warn">
+**First-time install?** If `/usr/local/bin` isn't in your PATH, add it and reload:
+
+```bash
+echo 'export PATH="$PATH:/usr/local/bin"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+Or restart your terminal after the first command.
+</Callout>
+
+### Verify it worked
+
+```bash
+cua-driver --version
+# cua-driver 0.1.0
+
+cua-driver --help
+# OVERVIEW: macOS Accessibility-driven computer-use agent — MCP stdio server.
+```
+
+## Grant TCC permissions
+
+Cua Driver needs two permissions:
+
+- **Accessibility** — to walk AX trees and dispatch `AXUIElementPerformAction`.
+- **Screen Recording** — to capture per-window screenshots via ScreenCaptureKit.
+
+The first time you run `cua-driver serve` or `cua-driver mcp`, a permissions gate opens and walks you through granting both. Once the green checkmarks appear, close the window.
+
+To check status from the shell:
+
+```bash
+cua-driver check_permissions
+# ✅ Accessibility: granted.
+# ✅ Screen Recording: granted.
+```
+
+<Callout type="info">
+  `check_permissions` reports the TCC status of the *calling* process. Inside an IDE terminal (Claude
+  Code, Cursor, VS Code, Conductor) the shell inherits the IDE's TCC responsibility chain, so results
+  can read "NOT granted" even when you've granted both to `CuaDriver.app`. Start the daemon first
+  (`cua-driver serve &`) and the CLI forwards through it for authoritative answers.
+</Callout>
+
+If a grant reads `NOT granted`, open **System Settings → Privacy & Security**, find `CuaDriver.app` under Accessibility and Screen Recording, and flip the toggle.
+
+## Requirements
+
+- macOS 14 (Sonoma) or later
+- Apple Silicon (M1/M2/M3/M4) or Intel Mac
+- 50 MB free disk space for the app bundle
+
+## Run the daemon
+
+Most workflows benefit from a persistent daemon. Element-indexed workflows require one: the per-pid element cache lives in-process, so one-shot CLI invocations lose it between calls.
+
+```bash
+# Start the daemon in the background.
+open -n -g -a CuaDriver --args serve
+
+# Confirm it's up.
+cua-driver status
+# cua-driver daemon is running
+#   socket: /Users/you/Library/Caches/cua-driver/cua-driver.sock
+#   pid: 12345
+
+# Stop it cleanly when done.
+cua-driver stop
+```
+
+`open -n -g -a CuaDriver --args serve` is the recommended form because LaunchServices attributes the process to `CuaDriver.app`'s bundle id, which is what the user actually granted TCC against. `cua-driver serve &` also works and auto-relaunches itself via `open` when it detects the wrong TCC context.
+
+## Register with an MCP client
+
+Cua Driver speaks MCP over stdio. Generate a client config snippet:
+
+```bash
+cua-driver mcp-config
+```
+
+Output:
+
+```json
+{
+  "mcpServers": {
+    "cua-driver": {
+      "command": "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Paste into `~/.claude/mcp.json` (Claude Code) or the equivalent config for your client. The client spawns `cua-driver mcp` on demand.
+
+## Uninstall
+
+```bash
+# Stop the daemon if running.
+cua-driver stop 2>/dev/null
+
+# Remove the app and the CLI symlink.
+rm -rf /Applications/CuaDriver.app
+rm -f /usr/local/bin/cua-driver
+
+# Optional: remove config + telemetry state.
+rm -rf ~/.cua-driver
+rm -rf ~/Library/Application\ Support/Cua\ Driver
+rm -rf ~/Library/Caches/cua-driver
+
+# Optional: remove the updater LaunchAgent.
+launchctl unload ~/Library/LaunchAgents/com.trycua.cua_driver_updater.plist 2>/dev/null
+rm -f ~/Library/LaunchAgents/com.trycua.cua_driver_updater.plist
+```
+
+## Troubleshooting
+
+**`cua-driver: command not found`** — `/usr/local/bin` isn't on your PATH. Add it and reload (see the first-time install callout above).
+
+**Permissions dialogs reappear after every launch** — macOS is attributing the process to a different bundle id than the one you granted. Run `cua-driver diagnose` and paste the output when filing an issue; it reports cdhash, team id, and which bundle TCC is checking against.
+
+**Daemon won't start** — another daemon may already be bound to the socket. Check with `cua-driver status` and stop it with `cua-driver stop`. For stale lock files after a crash, the daemon's own probe detects those and proceeds.
+
+Ready to drive an app? Head to the [Quickstart](/cua-driver/guide/getting-started/quickstart).

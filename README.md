@@ -25,47 +25,43 @@
 <div align="center">
   <table>
     <tr>
-      <td align="center">
-        <a href="#cua---agentic-ui-automation--code-execution">
-          <picture>
-            <source media="(prefers-color-scheme: dark)" srcset="img/card-cua-dark.png">
-            <source media="(prefers-color-scheme: light)" srcset="img/card-cua-light.png">
-            <img src="img/card-cua-light.png" alt="Cua" width="280">
-          </picture>
-        </a>
-      </td>
-      <td align="center">
-        <a href="#cua-bench---benchmarks--rl-environments">
-          <picture>
-            <source media="(prefers-color-scheme: dark)" srcset="img/card-cua-bench-dark.png">
-            <source media="(prefers-color-scheme: light)" srcset="img/card-cua-bench-light.png">
-            <img src="img/card-cua-bench-light.png" alt="Cua-Bench" width="280">
-          </picture>
-        </a>
-      </td>
-      <td align="center">
-        <a href="#lume---macos-virtualization">
-          <picture>
-            <source media="(prefers-color-scheme: dark)" srcset="img/card-lume-dark.png">
-            <source media="(prefers-color-scheme: light)" srcset="img/card-lume-light.png">
-            <img src="img/card-lume-light.png" alt="Lume" width="280">
-          </picture>
+      <td colspan="3" align="center">
+        <a href="#cua-driver---background-computer-use-on-macos">
+          <img src="img/card-cua-driver.png" alt="Cua Driver — The background computer-use agent" width="888">
         </a>
       </td>
     </tr>
     <tr>
-      <td colspan="3" align="center">
-        <a href="https://cua.ai/docs/cuabot/guide/getting-started/introduction">
-          <picture>
-            <source media="(prefers-color-scheme: dark)" srcset="img/card-cua-bot-dark.png">
-            <source media="(prefers-color-scheme: light)" srcset="img/card-cua-bot-light.png">
-            <img src="img/card-cua-bot-light.png" alt="Cua Bot" width="888">
-          </picture>
+      <td align="center">
+        <a href="#cua---agentic-ui-automation--code-execution">
+          <img src="img/card-cua-sandbox.png" alt="Cua &amp; Cua Sandbox" width="280">
+        </a>
+      </td>
+      <td align="center">
+        <a href="#cua-bench---benchmarks--rl-environments">
+          <img src="img/card-cua-bench.png" alt="Cua Bench" width="280">
+        </a>
+      </td>
+      <td align="center">
+        <a href="#lume---macos-virtualization">
+          <img src="img/card-cua-lume.png" alt="Lume" width="280">
         </a>
       </td>
     </tr>
   </table>
 </div>
+
+---
+
+## Cua Driver - Background computer-use on macOS
+
+Drive any native macOS app **in the background** — agents click, type, and verify without stealing the cursor, focus, or Space, even on non-AX surfaces like Chromium web content and canvas-based tools (Blender, Figma, DAWs, game engines). Use with the CLI or MCP server for Claude Code, Cursor, and custom clients. Every session records as a replayable trajectory.
+
+```sh
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install.sh)"
+```
+
+Full tool reference, architecture notes, and the Claude Code skill ship with the package: [`libs/cua-driver/README.md`](libs/cua-driver/README.md).
 
 ---
 
