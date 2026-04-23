@@ -341,14 +341,18 @@ log "cua-driver $VERSION installed"
 cat << 'FINALEOF'
 
 Next steps:
-  1. Grant Accessibility + Screen Recording permissions:
-       open /Applications/CuaDriver.app
-     (a one-time setup window will guide you)
+  1. Start the daemon so TCC attributes requests to CuaDriver.app:
+       open -n -g -a CuaDriver --args serve
 
-  2. Wire into your MCP client (Claude Code, Cursor, etc.):
+  2. Trigger the Accessibility + Screen Recording prompts:
+       cua-driver check_permissions
+     macOS will raise the system dialogs. Grant both, then re-run
+     the command to confirm it reports all green.
+
+  3. Wire into your MCP client (Claude Code, Cursor, etc.):
        cua-driver mcp-config | pbcopy
 
-  3. Or drive directly from the shell:
+  4. Or drive directly from the shell:
        cua-driver list_apps
 
 Docs: https://github.com/trycua/cua/tree/main/libs/cua-driver

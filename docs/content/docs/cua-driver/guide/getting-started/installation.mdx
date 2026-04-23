@@ -41,9 +41,19 @@ Cua Driver needs two permissions:
 - **Accessibility** — to walk AX trees and dispatch `AXUIElementPerformAction`.
 - **Screen Recording** — to capture per-window screenshots via ScreenCaptureKit.
 
-The first time you run `cua-driver serve` or `cua-driver mcp`, a permissions gate opens and walks you through granting both. Once the green checkmarks appear, close the window.
+Start the daemon first so TCC attributes the subsequent requests to `CuaDriver.app` rather than to whatever shell parent launched the CLI:
 
-To check status from the shell:
+```bash
+open -n -g -a CuaDriver --args serve
+```
+
+Then trigger the prompts:
+
+```bash
+cua-driver check_permissions
+```
+
+macOS raises the Accessibility and Screen Recording system dialogs. Grant both, then re-run the command to confirm:
 
 ```bash
 cua-driver check_permissions
@@ -54,11 +64,12 @@ cua-driver check_permissions
 <Callout type="info">
   `check_permissions` reports the TCC status of the *calling* process. Inside an IDE terminal (Claude
   Code, Cursor, VS Code, Conductor) the shell inherits the IDE's TCC responsibility chain, so results
-  can read "NOT granted" even when you've granted both to `CuaDriver.app`. Start the daemon first
-  (`cua-driver serve &`) and the CLI forwards through it for authoritative answers.
+  can read "NOT granted" even when you've granted both to `CuaDriver.app`. The daemon-first recipe
+  above sidesteps this because the CLI forwards through the daemon, which runs under
+  `CuaDriver.app`'s bundle id.
 </Callout>
 
-If a grant reads `NOT granted`, open **System Settings → Privacy & Security**, find `CuaDriver.app` under Accessibility and Screen Recording, and flip the toggle.
+If a grant still reads `NOT granted` after granting in the dialog, open **System Settings → Privacy & Security**, find `CuaDriver.app` under Accessibility and Screen Recording, and flip the toggle.
 
 ## Requirements
 
