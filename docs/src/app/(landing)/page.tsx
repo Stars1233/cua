@@ -121,6 +121,14 @@ export default function LandingPage() {
                   Get started
                 </Link>
                 <a
+                  href="https://cua.cal.com/f/cua-demo"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="cds-button-secondary inline-flex items-center gap-2 rounded-[10px] px-6 py-3 text-[0.95rem] font-semibold"
+                >
+                  Book a call
+                </a>
+                <a
                   href="https://cua.ai"
                   target="_blank"
                   rel="noreferrer"
