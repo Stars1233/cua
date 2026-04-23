@@ -6,12 +6,26 @@ and returns an SSE stream with a single ``data: {...}`` frame containing the res
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
+import logging
 from typing import Any, Dict, Optional
 
 import httpx
 from cua_sandbox.transport.base import Transport
+
+logger = logging.getLogger(__name__)
+
+# Retry transient 5xx responses on /cmd. The computer-server can briefly
+# return 5xx (e.g. when Traefik temporarily drops the pod from its
+# endpoint list, or when the emulator's gRPC subsystem hangs during
+# fork/exec). 4xx errors are not retried (client error, won't change).
+# Read/transport timeouts are not retried either — the command may
+# already be running on the server, and most /cmd actions aren't
+# idempotent.
+_CMD_MAX_RETRIES = 3
+_CMD_RETRY_BACKOFF_S = 0.5  # doubled each retry: 0.5s, 1.0s, 2.0s
 
 
 class HTTPTransport(Transport):
@@ -57,7 +71,13 @@ class HTTPTransport(Transport):
             self._client = None
 
     async def _cmd(self, command: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Send a command to POST /cmd and parse the SSE response."""
+        """Send a command to POST /cmd and parse the SSE response.
+
+        Retries on transient 5xx responses (server briefly unavailable,
+        grpc fork hiccups, Traefik backend-unready). Does not retry on
+        httpx exceptions — the request may have reached the server and
+        started running a non-idempotent command.
+        """
         assert self._client is not None, "Transport not connected"
         body = {"command": command}
         if params:
@@ -72,7 +92,19 @@ class HTTPTransport(Transport):
             req_timeout = httpx.Timeout(self._timeout, read=float(server_timeout) + 10)
         else:
             req_timeout = None  # use client default
-        resp = await self._client.post("/cmd", json=body, timeout=req_timeout)
+
+        resp: httpx.Response
+        for attempt in range(_CMD_MAX_RETRIES):
+            resp = await self._client.post("/cmd", json=body, timeout=req_timeout)
+            if resp.status_code < 500 or attempt == _CMD_MAX_RETRIES - 1:
+                break
+            backoff = _CMD_RETRY_BACKOFF_S * (2 ** attempt)
+            logger.debug(
+                "[http] /cmd %s returned %d, retrying in %.1fs (attempt %d/%d)",
+                command, resp.status_code, backoff, attempt + 1, _CMD_MAX_RETRIES,
+            )
+            await asyncio.sleep(backoff)
+
         resp.raise_for_status()
         return self._parse_sse(resp.text)
 
