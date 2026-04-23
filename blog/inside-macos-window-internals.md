@@ -26,7 +26,7 @@ A background computer-use driver should be a commodity, not a feature of one age
 
 I figured this would take a weekend (it kinda did plus a couple more days of plumbing!) What we actually needed was a private Apple framework called SkyLight: the undocumented C layer WindowServer uses to drive every window on your screen.
 
-![SkyLight sits between AppKit and the HID event stream — SLEventPostToPid bypasses IOHIDPostEvent to reach a specific pid without moving the shared cursor](https://github.com/user-attachments/assets/97051c9a-f0c9-400f-b34d-478f647d8ec4)
+![SkyLight sits between AppKit and the HID event stream — SLEventPostToPid bypasses IOHIDPostEvent to reach a specific pid without moving the shared cursor](https://github.com/user-attachments/assets/a4b6c652-ce7a-4306-86f9-776083eb3b5d)
 
 SkyLight is where the interesting stuff is. `SLEventPostToPid` posts synthesized events to one specific process without going through the HID tap. `SLPSPostEventRecordTo` flips a window's AppKit-active state without raising it. `_AXObserverAddNotificationAndCheckRemote` keeps Electron apps' accessibility trees alive when their windows are occluded.
 
@@ -60,7 +60,7 @@ I found the function by grepping SkyLight's symbol exports. It doesn't appear in
 
 ## The primer click
 
-![Two clicks, one the renderer drops, one it trusts — the (-1, -1) decoy ticks Chromium's user-activation gate so the real click lands as a trusted continuation](https://github.com/user-attachments/assets/0b52bbef-9150-4eb6-b534-dc835a3ceb27)
+![Two clicks, one the renderer drops, one it trusts — the (-1, -1) decoy ticks Chromium's user-activation gate so the real click lands as a trusted continuation](https://github.com/user-attachments/assets/7b80b215-62f0-4254-8a68-6048b78a57cf)
 
 Even with SkyLight, one more thing breaks: Chromium's user-activation gate. If the event arrives through the right trust envelope but the renderer hasn't seen a recent "trusted user gesture," the gate refuses to let the click activate things like video play/pause, `window.open`, or the fullscreen API.
 
