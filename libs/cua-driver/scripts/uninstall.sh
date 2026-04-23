@@ -84,6 +84,18 @@ else
     log "no config at $CONFIG_DIR (skipping)"
 fi
 
+# Claude Code skill symlink. Only remove when the link is ours — a dev
+# user pointing ~/.claude/skills/cua-driver at a working copy of the
+# repo keeps their link untouched.
+SKILL_LINK="$HOME/.claude/skills/cua-driver"
+SKILL_TARGET_EXPECTED="$APP_BUNDLE/Contents/Resources/Skills/cua-driver"
+if [[ -L "$SKILL_LINK" ]] && [[ "$(readlink "$SKILL_LINK")" == "$SKILL_TARGET_EXPECTED" ]]; then
+    rm -f "$SKILL_LINK"
+    log "removed $SKILL_LINK"
+else
+    log "no install-created skill symlink at $SKILL_LINK (skipping)"
+fi
+
 cat << 'FINALUNMSG'
 
 cua-driver uninstalled.

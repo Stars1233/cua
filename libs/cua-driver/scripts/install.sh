@@ -118,6 +118,28 @@ $SUDO mkdir -p "$(dirname "$BIN_LINK")"
 $SUDO ln -sf "$APP_BINARY" "$BIN_LINK"
 log "symlinked $BIN_LINK -> $APP_BINARY"
 
+# --- Install Claude Code skill pack -------------------------------------
+#
+# Detect Claude Code users (via ~/.claude/skills/ presence) and drop a
+# symlink pointing at the skill we shipped inside the bundle. Auto-updates
+# atomically replace /Applications/CuaDriver.app, so the symlink stays
+# valid across every release. Never overwrites an existing link or
+# directory — dev users with their own ~/.claude/skills/cua-driver symlink
+# pointing at a working copy of the repo keep theirs.
+
+SKILL_LINK="$HOME/.claude/skills/cua-driver"
+SKILL_TARGET="$APP_DEST/Contents/Resources/Skills/cua-driver"
+if [[ -d "$HOME/.claude/skills" ]]; then
+    if [[ -e "$SKILL_LINK" ]] || [[ -L "$SKILL_LINK" ]]; then
+        log "skill link already exists at $SKILL_LINK (skipping)"
+    elif [[ -d "$SKILL_TARGET" ]]; then
+        ln -s "$SKILL_TARGET" "$SKILL_LINK"
+        log "symlinked Claude Code skill at $SKILL_LINK"
+    else
+        log "skill pack missing at $SKILL_TARGET (skipping; older release?)"
+    fi
+fi
+
 # --- Install auto-updater -----------------------------------------------
 
 if [[ "$INSTALL_AUTO_UPDATER" == "true" ]]; then

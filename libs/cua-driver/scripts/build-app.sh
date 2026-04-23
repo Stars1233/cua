@@ -38,6 +38,15 @@ if [[ -f "App/CuaDriver/AppIcon.icns" ]]; then
     cp App/CuaDriver/AppIcon.icns "$APP_CONTENTS/Resources/AppIcon.icns"
 fi
 
+# Claude Code skill pack. install.sh symlinks ~/.claude/skills/cua-driver
+# to this path when a Claude Code install is detected on the user's
+# machine. Ships inside the bundle so it survives auto-updates and
+# relocations of CuaDriver.app.
+if [[ -d "Skills/cua-driver" ]]; then
+    mkdir -p "$APP_CONTENTS/Resources/Skills"
+    cp -R Skills/cua-driver "$APP_CONTENTS/Resources/Skills/cua-driver"
+fi
+
 # Prefer Developer ID Application cert if available; fall back to ad-hoc.
 # `security find-identity` prints identities as:
 #   1) <SHA> "Developer ID Application: Team Name (TEAMID)"

@@ -80,6 +80,15 @@ cp -f .build/release/cua-driver "$APP_BUNDLE/Contents/MacOS/cua-driver"
 # version on the way into the bundle so dev state is left untouched.
 sed "s/<string>0.0.1<\/string>/<string>$VERSION<\/string>/" "./App/CuaDriver/Info.plist" > "$APP_BUNDLE/Contents/Info.plist"
 
+# Claude Code skill pack. install.sh symlinks ~/.claude/skills/cua-driver
+# into this bundle path when a Claude Code install is detected. Ship
+# the skill inside the .app so it survives auto-updates.
+if [ -d "Skills/cua-driver" ]; then
+    log "essential" "Copying Claude Code skill pack into bundle..."
+    mkdir -p "$APP_BUNDLE/Contents/Resources/Skills"
+    cp -R Skills/cua-driver "$APP_BUNDLE/Contents/Resources/Skills/cua-driver"
+fi
+
 # --- Sign the .app bundle ---
 log "essential" "Signing .app bundle..."
 log "essential" "Using signing identity: $CERT_APPLICATION_NAME"
