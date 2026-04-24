@@ -125,14 +125,19 @@ public enum ListWindowsTool {
                 )
             }
 
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: summary(
-                            records, currentSpaceID: currentSpaceID),
-                        annotations: nil, _meta: nil)
-                ]
+            let textContent: Tool.Content = .text(
+                text: summary(records, currentSpaceID: currentSpaceID),
+                annotations: nil,
+                _meta: nil
             )
+            let output = Output(windows: records, currentSpaceId: currentSpaceID)
+            if let result = try? CallTool.Result(
+                content: [textContent],
+                structuredContent: output
+            ) {
+                return result
+            }
+            return CallTool.Result(content: [textContent])
         }
     )
 

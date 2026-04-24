@@ -51,6 +51,10 @@ public final class AgentCursorRenderer {
     private(set) public var position: CGPoint = .init(x: -200, y: -200)
     /// Visual heading in radians (tip points along this vector).
     private(set) public var heading: Double = .pi / 4  // ~NW, like the OS cursor
+    /// Screen-space bounding rect of the most recently targeted AX element.
+    /// Drawn as a glowing highlight rectangle in the overlay view.
+    /// Nil when no element is targeted or the cursor is hidden.
+    public var focusRect: CGRect? = nil
 
     // -------- Internal state ---------------------------------------------
 

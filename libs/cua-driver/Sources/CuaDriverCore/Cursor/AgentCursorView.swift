@@ -17,13 +17,61 @@ public struct AgentCursorView: View {
 
     public var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 120.0)) { ctx in
-            Canvas { gctx, _ in
+            Canvas { gctx, size in
                 renderer.tick(now: ctx.date.timeIntervalSinceReferenceDate)
+                drawFocusRect(in: gctx, canvasSize: size)
                 drawCursor(in: gctx)
             }
             .ignoresSafeArea()
             .allowsHitTesting(false)
         }
+    }
+
+    /// Draw a glowing highlight rectangle around the currently targeted AX
+    /// element (if `renderer.focusRect` is set). The rect is in screen-point
+    /// coordinates; the overlay window's frame is the full screen, so we
+    /// convert from screen-point to canvas-local by subtracting the screen's
+    /// origin. Uses a cyan-glow border with a faint fill to mark the target.
+    private func drawFocusRect(in ctx: GraphicsContext, canvasSize: CGSize) {
+        guard let screenRect = renderer.focusRect else { return }
+        // The overlay window covers the whole screen, and the canvas's
+        // coordinate origin is the top-left of the screen. Screen-point
+        // coordinates (CoreGraphics, top-left origin on macOS) map
+        // directly to canvas coordinates — no offset needed.
+        let r = CGRect(
+            x: screenRect.minX,
+            y: screenRect.minY,
+            width: screenRect.width,
+            height: screenRect.height
+        )
+        let cornerRadius: CGFloat = 4
+        let rounded = Path(roundedRect: r, cornerRadius: cornerRadius)
+
+        // Faint fill — shows the full extent of the target.
+        ctx.fill(
+            rounded,
+            with: .color(
+                Color(red: 0x5E/255, green: 0xC0/255, blue: 0xE8/255).opacity(0.08)
+            )
+        )
+
+        // Solid bright border.
+        ctx.stroke(
+            rounded,
+            with: .color(
+                Color(red: 0x5E/255, green: 0xC0/255, blue: 0xE8/255).opacity(0.90)
+            ),
+            lineWidth: 2
+        )
+
+        // Wide soft glow stroke for the neon halo effect.
+        ctx.stroke(
+            rounded,
+            with: .color(
+                Color(red: 0x5E/255, green: 0xC0/255, blue: 0xE8/255).opacity(0.30)
+            ),
+            lineWidth: 8
+        )
     }
 
     /// Draw the cursor arrow centered on `renderer.position`, rotated to

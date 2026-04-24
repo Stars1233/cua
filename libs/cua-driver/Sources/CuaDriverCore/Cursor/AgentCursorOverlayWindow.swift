@@ -36,14 +36,13 @@ public final class AgentCursorOverlayWindow: NSWindow {
         backgroundColor = .clear
         hasShadow = false
         ignoresMouseEvents = true
-        // Start at `.floating` — above ordinary app windows, below
-        // menus and modals. `AgentCursor.pinAbove(pid:)` re-parents
-        // the overlay into `.normal` and z-orders it just above the
-        // target's frontmost window on every click, so unrelated apps
-        // layered over the target correctly occlude the cursor. The
-        // `.floating` default only matters for the initial show
-        // before any pointer action has run.
-        level = .floating
+        // `.normal` level so the overlay is sandwiched in the regular
+        // window stack. `AgentCursor.pinAbove(pid:)` calls
+        // `order(.above, relativeTo: targetWindowId)` to place the
+        // overlay exactly one slot above the target window — windows
+        // that were already above the target remain above the overlay.
+        // This produces the ordering: [target, overlay, fg-windows].
+        level = .normal
         collectionBehavior = [
             .canJoinAllSpaces, .fullScreenAuxiliary, .stationary,
         ]

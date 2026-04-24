@@ -269,6 +269,24 @@ public enum ClickTool {
             ) {
                 try AXInput.performAction(axAction, on: element)
             }
+            // For text fields (AXTextField / AXTextArea), WebKit establishes
+            // DOM focus asynchronously after AXPress returns. Without a pause,
+            // a follow-up type_text_chars call races with WebKit's focus setup
+            // and sends chars before the input is active — chars are silently
+            // dropped. This is especially pronounced for email/number inputs
+            // when the app is backgrounded (Safari is non-frontmost).
+            //
+            // Empirically, 800 ms is reliably sufficient: a direct Python
+            // integration test showed immediate click+type fails but click +
+            // 2 s + type succeeds; 800 ms gives comfortable margin while
+            // keeping the UX fast enough for interactive use.
+            let target = AXInput.describe(element)
+            if axAction == "AXPress",
+               let role = target.role,
+               role == "AXTextField" || role == "AXTextArea"
+            {
+                try? await Task.sleep(for: .milliseconds(800))
+            }
             // AX-dispatched clicks can raise the target window to
             // the top of its level, leaving the overlay stranded
             // beneath it. Re-pin BEFORE the press-in / dwell so
@@ -279,6 +297,14 @@ public enum ClickTool {
             await MainActor.run {
                 AgentCursor.shared.pinAbove(pid: pid)
             }
+            // If the element has a bounding rect, show a glowing focus
+            // highlight on the cursor overlay so the user can see which
+            // element the agent is targeting.
+            if let rect = AXInput.screenBoundingRect(of: element) {
+                await MainActor.run {
+                    AgentCursor.shared.showFocusRect(rect)
+                }
+            }
             // Press-in / release pulse on the cursor — purely
             // visual confirmation that the click fired.
             // No-op when disabled.
@@ -287,9 +313,35 @@ public enum ClickTool {
             // period and arm the idle-hide timer. No-op when
             // disabled.
             await AgentCursor.shared.finishClick(pid: pid)
-            let target = AXInput.describe(element)
             var summary =
                 "✅ Performed \(axAction) on [\(index)] \(target.role ?? "?") \"\(target.title ?? "")\"."
+            // For popup buttons (HTML <select> elements in Safari/WebKit):
+            // the native macOS popup menu that AXPress opens immediately
+            // closes when the app is non-frontmost, so the visible options
+            // are never selectable from the keyboard. Instead, list the
+            // available options from the AX children and direct the caller
+            // to use set_value — which AX-presses the specific child option
+            // directly, bypassing the native menu entirely.
+            if target.role == "AXPopUpButton" {
+                let children = AXInput.children(of: element)
+                let options: [(title: String, value: String)] = children.compactMap { child in
+                    let t = AXInput.stringAttribute("AXTitle", of: child) ?? ""
+                    let v = AXInput.stringAttribute("AXValue", of: child) ?? ""
+                    guard !t.isEmpty || !v.isEmpty else { return nil }
+                    return (title: t, value: v)
+                }
+                if !options.isEmpty {
+                    let optList = options.map { o in
+                        o.value.isEmpty || o.value == o.title ? "\"\(o.title)\"" : "\"\(o.title)\" (value: \(o.value))"
+                    }.joined(separator: ", ")
+                    summary += "\n\n⚠️ This is a popup/select button. The native macOS menu"
+                    summary += " closes immediately when the window is in the background."
+                    summary += " Do NOT use click again — instead, use:"
+                    summary += "\n  set_value(pid: \(pid), window_id: \(windowId), element_index: \(index),"
+                    summary += " value: \"<option title>\")"
+                    summary += "\nAvailable options: [\(optList)]"
+                }
+            }
             // If the element didn't advertise the action we just
             // dispatched, append a non-fatal warning. The AX call
             // returned `.success` but the element almost certainly

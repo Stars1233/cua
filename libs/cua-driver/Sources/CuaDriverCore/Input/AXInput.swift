@@ -142,6 +142,30 @@ public enum AXInput {
         )
     }
 
+    /// The element's screen-point bounding rect (top-left origin).
+    /// Returns nil when the element has no position / size.
+    /// Public entry point used by ClickTool for the focus-rect overlay.
+    public static func screenBoundingRect(of element: AXUIElement) -> CGRect? {
+        return boundingRect(of: element)
+    }
+
+    /// Read the element's `AXChildren` attribute. Returns an empty array on
+    /// any error (element has no children, AX permission denied, etc.).
+    public static func children(of element: AXUIElement) -> [AXUIElement] {
+        var ref: CFTypeRef?
+        guard
+            AXUIElementCopyAttributeValue(element, "AXChildren" as CFString, &ref) == .success,
+            let arr = ref as? [AXUIElement]
+        else { return [] }
+        return arr
+    }
+
+    /// Read a string attribute from an element. Returns nil when the attribute
+    /// is absent, unreadable, or not a string.
+    public static func stringAttribute(_ name: String, of element: AXUIElement) -> String? {
+        return attributeString(element, name)
+    }
+
     /// The element's on-screen center in screen-point coordinates
     /// (top-left origin). Returns nil when the element has no
     /// position / size (menus, offscreen elements, hidden rows).

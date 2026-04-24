@@ -233,8 +233,17 @@ public enum LaunchAppTool {
                     summary += "\n→ Call get_window_state(pid: \(info.pid), window_id) to inspect."
                 }
 
+                let launchResult = LaunchResult(info: info, windows: windowRecords)
+                let textContent: Tool.Content = .text(
+                    text: summary, annotations: nil, _meta: nil)
+                if let result = try? CallTool.Result(
+                    content: [textContent],
+                    structuredContent: launchResult
+                ) {
+                    return result
+                }
                 return CallTool.Result(
-                    content: [.text(text: summary, annotations: nil, _meta: nil)]
+                    content: [textContent]
                 )
             } catch let error as AppLauncher.LaunchError {
                 return errorResult(error.description)

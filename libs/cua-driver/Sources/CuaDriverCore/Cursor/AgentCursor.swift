@@ -207,12 +207,18 @@ public final class AgentCursor {
     /// the overlay is hidden or the cursor disabled.
     private var activationObserver: NSObjectProtocol?
 
-    /// Short-lived task that re-runs `pinAbove` a few times after
-    /// each click to catch the async window-level raise that the
-    /// target does without the app becoming frontmost (so the
-    /// activation observer misses it). Cancelled and respawned on
-    /// every `pinAbove` call.
-    private var defensiveRepinTask: Task<Void, Never>?
+    /// Continuous repin loop: fires at ~30 fps while the overlay is
+    /// z-pinned to a target. Catches async window-level raises that
+    /// macOS issues after AX actions (the target can briefly elevate
+    /// above the overlay before any one-shot tick fires). Replaces
+    /// the previous sparse [60, 180, 360 …] defensive-repin schedule
+    /// — at 33ms the overlay snaps back within one frame rather than
+    /// up to 300ms, making the "dip behind" artefact imperceptible.
+    ///
+    /// `CGWindowListCopyWindowInfo` at 30 fps costs a few hundred
+    /// microseconds per call — well within the 33ms budget and much
+    /// cheaper than pixel capture.
+    private var continuousRepinTask: Task<Void, Never>?
 
     /// Count of consecutive `reapplyPinAbove` ticks that couldn't
     /// find the pinned pid's on-screen window. Used to tolerate
@@ -294,14 +300,11 @@ public final class AgentCursor {
     }
 
     /// Pin the overlay just above the given pid's frontmost on-screen
-    /// window. Keeps the overlay at `.floating` (the init default)
-    /// and orders it above the target window so consecutive clicks on
-    /// the same target skip redundant re-orders. See
-    /// `reapplyPinAbove()` for the rationale on staying at `.floating`
-    /// instead of demoting to `.normal` — short version: `.normal`
-    /// lets Electron / Chromium targets transiently push themselves
-    /// above the cursor mid-click, making the overlay read as "blinks
-    /// out for a frame" on every click.
+    /// window at `.normal` level. `order(.above, relativeTo:)` places
+    /// the overlay exactly one slot above the target so any windows
+    /// that were already above the target remain above the overlay —
+    /// producing `[target, overlay, fg-windows]` z-ordering. Consecutive
+    /// clicks on the same target skip redundant re-orders.
     ///
     /// When the target has no on-screen window (hidden launch still
     /// pending, offscreen window, etc.) the overlay is ordered out
@@ -313,31 +316,27 @@ public final class AgentCursor {
         missedPinCount = 0  // fresh pin — any earlier miss streak is stale
         ensureActivationObserver()
         reapplyPinAbove()
-        scheduleDefensiveRepin()
+        startContinuousRepin()
     }
 
-    /// Re-run `pinAbove` a few times over the next ~1200ms to catch
-    /// the async window-level raise macOS sometimes does a few
-    /// frames after an AX click — when the target's *window* rises
-    /// in z-order but the *app* doesn't become frontmost, so
-    /// `didActivateApplicationNotification` never fires. Each call
-    /// is idempotent when the overlay is already correctly pinned;
-    /// cheap enough to run on a short schedule.
+    /// Start a continuous ~30 fps repin loop for the current target.
+    /// Fires every 33ms while `pinnedPid` is set, re-ordering the
+    /// overlay just above the target each tick. This catches window-
+    /// level raises that macOS issues asynchronously after AX actions
+    /// (without the activation notification firing) — the overlay
+    /// snaps back within ≤33ms instead of waiting up to 300ms for a
+    /// sparse defensive tick.
     ///
-    /// Coverage must span the full click lifecycle — `playClickPress`
-    /// runs for 650ms and `finishClick`'s dwell adds another
-    /// ~250ms. An earlier 700ms schedule let late-arriving target
-    /// raises (Electron / redraw-heavy apps in particular) land
-    /// after the last tick, stranding the overlay under the target
-    /// for the rest of the ripple. The current schedule tails out
-    /// to 1200ms with buffer, so ticks keep firing through the
-    /// ripple + dwell even for slower targets.
-    private func scheduleDefensiveRepin() {
-        defensiveRepinTask?.cancel()
-        defensiveRepinTask = Task { @MainActor [weak self] in
-            for delayMs in [60, 180, 360, 600, 900, 1200] {
-                try? await Task.sleep(nanoseconds: UInt64(delayMs) * 1_000_000)
-                guard let self, !Task.isCancelled else { return }
+    /// The loop exits automatically when `pinnedPid` is cleared
+    /// (overlay hidden or target gone) so there's no separate
+    /// cancellation needed in the common path. Explicit cancellation
+    /// is still done in `hide()` for immediate tear-down.
+    private func startContinuousRepin() {
+        continuousRepinTask?.cancel()
+        continuousRepinTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 33_000_000)  // ~30 fps
+                guard let self, !Task.isCancelled, self.pinnedPid != nil else { return }
                 self.reapplyPinAbove()
             }
         }
@@ -378,24 +377,20 @@ public final class AgentCursor {
             return
         }
         missedPinCount = 0
-        // Keep the overlay at its initial `.floating` level — above
-        // ordinary `.normal` app windows without competing for z-order
-        // against them. Previously this demoted the overlay to
-        // `.normal` and re-ordered it just above the target so
-        // unrelated apps stacked over the target would occlude the
-        // cursor (aesthetic nicety). But at `.normal`, any redraw /
-        // re-raise on the target — especially for Electron / Chromium
-        // apps that re-stack their own window on AX-dispatched clicks
-        // — can transiently push the target above the overlay. Ripple
-        // animation then plays behind the app and the cursor reads
-        // as "disappears for a second" on every click. At `.floating`,
-        // the window server guarantees ordering against `.normal`, so
-        // the cursor stays visible through the click regardless of
-        // what the target does to its own z-stack.
+        // Place the overlay just above the target within the `.normal`
+        // window level — producing the ordering:
+        //   [target-window, overlay, windows-that-were-above-target]
+        // This means windows that were already in front of the target
+        // (e.g. the user's foreground app) correctly occlude the cursor,
+        // making it clear which window the agent is interacting with.
         //
-        // `order(.above, relativeTo:)` is still worth running: it
-        // keeps the overlay above other `.floating` windows (ours or
-        // the system's) that might otherwise appear over it.
+        // The overlay was previously kept at `.floating` so the window
+        // server guaranteed it stayed above all `.normal` windows. The
+        // downside is that it covered the user's foreground app, making
+        // the z-ordering visually misleading for background-window
+        // automation. Now at `.normal`, apps above the target remain
+        // above the overlay — background interaction stays visually
+        // sandwiched where it belongs.
         win.order(.above, relativeTo: targetWindow.id)
         pinnedWindowId = targetWindow.id
     }
@@ -432,26 +427,26 @@ public final class AgentCursor {
             NSWorkspace.shared.notificationCenter.removeObserver(obs)
             activationObserver = nil
         }
-        defensiveRepinTask?.cancel()
-        defensiveRepinTask = nil
+        continuousRepinTask?.cancel()
+        continuousRepinTask = nil
     }
 
     /// Hide the overlay window. No-op if not shown. Keeps the window
     /// retained so the next `show()` is instant.
     ///
-    /// Also clears the pin state and cancels the defensive repin
-    /// task. Without this cleanup, subsequent
-    /// `didActivateApplicationNotification` events (or any still-
-    /// queued defensive repin ticks) would call `reapplyPinAbove`,
-    /// which re-orders the overlay window into the z-stack — visibly
-    /// resurrecting the cursor the idle-hide timer just removed.
+    /// Also clears the pin state and stops the continuous repin loop.
+    /// Without this cleanup, the loop would keep calling
+    /// `reapplyPinAbove`, re-ordering the overlay window back into
+    /// the z-stack — visibly resurrecting the cursor the idle-hide
+    /// timer just removed.
     public func hide() {
         overlay?.orderOut(nil)
         pinnedWindowId = nil
         pinnedPid = nil
         missedPinCount = 0
-        defensiveRepinTask?.cancel()
-        defensiveRepinTask = nil
+        continuousRepinTask?.cancel()
+        continuousRepinTask = nil
+        clearFocusRect()
     }
 
     /// Move the cursor immediately to a screen-point coordinate. No
@@ -543,6 +538,20 @@ public final class AgentCursor {
         // this timer and reschedules, so consecutive clicks keep the
         // overlay visible throughout the burst.
         scheduleIdleHide()
+    }
+
+    /// Show a glowing highlight rectangle around the given screen rect.
+    /// Used by ClickTool to draw a focus indicator on the targeted AX
+    /// element. Pass nil to clear the rect. No-op when disabled.
+    public func showFocusRect(_ rect: CGRect?) {
+        guard isEnabled else { return }
+        AgentCursorRenderer.shared.focusRect = rect
+    }
+
+    /// Clear the glowing focus rect. Called by hide() so the rect
+    /// doesn't linger after the cursor auto-hides.
+    private func clearFocusRect() {
+        AgentCursorRenderer.shared.focusRect = nil
     }
 
     /// For tests + spike code: tear down the window so the next
