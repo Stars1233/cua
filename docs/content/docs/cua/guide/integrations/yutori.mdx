@@ -1,17 +1,17 @@
 ---
 title: Yutori
-description: Use Yutori's n1 model with Cua cloud sandboxes
+description: Use Yutori's n1.5 model with Cua cloud sandboxes
 icon: yutori
 ---
 
-Cua supports [Yutori](https://yutori.com/)'s `n1` model as a computer-use agent. This guide shows how to connect Yutori n1 to a Cua cloud sandbox for an interactive agent loop.
+Cua supports [Yutori](https://yutori.com/)'s `n1.5` model as a computer-use agent. This guide shows how to connect Yutori n1.5 to a Cua cloud sandbox for an interactive agent loop.
 
 ## Setup
 
 Install the Cua SDK and `python-dotenv`:
 
 ```bash
-pip install cua-computer cua-agent python-dotenv
+uv pip install cua-computer cua-agent python-dotenv
 ```
 
 Set the following environment variables (or add them to a `.env` file):
@@ -50,7 +50,7 @@ async def main():
         api_key=CUA_API_KEY,
     ) as computer:
         agent = ComputerAgent(
-            model="yutori/n1",
+            model="yutori/n1.5",
             tools=[computer],
             api_key=YUTORI_API_KEY,
         )
@@ -70,10 +70,10 @@ asyncio.run(main())
 ## Running the script
 
 ```bash
-python yutori_cua_script.py
+uv run yutori_cua_script.py
 ```
 
-Once running, you'll see a `>` prompt. Type a natural-language instruction and the Yutori n1 agent will execute it inside the Cua cloud sandbox. For example:
+Once running, you'll see a `>` prompt. Type a natural-language instruction and the Yutori n1.5 agent will execute it inside the Cua cloud sandbox. For example:
 
 ```
 > Open Firefox and search for "Cua computer use agent"
