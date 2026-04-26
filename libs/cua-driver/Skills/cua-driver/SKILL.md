@@ -214,11 +214,14 @@ editor state.
 
 1. `cua-driver` is on `$PATH` (`which cua-driver`). If not, point the
    user at `scripts/install-local.sh` and stop.
-2. Run `cua-driver check_permissions`. If either grant is `false`, tell
-   the user to open System Settings → Privacy & Security and grant
+2. Run `cua-driver check_permissions` (with the daemon up — see step 3).
+   The default behavior also raises the system permission dialogs for
+   any missing grants, so the user can grant on the spot. If either
+   grant still reads `false` after that (user dismissed the dialog),
+   tell them to open System Settings → Privacy & Security and grant
    Accessibility and Screen Recording to `CuaDriver.app`, then stop.
-   (`cua-driver check_permissions '{"prompt":true}'` raises the system
-   dialogs, but only do that if the user asks — it steals focus.)
+   Pass `'{"prompt":false}'` for a purely read-only status check that
+   won't steal focus.
 3. Start the daemon with `open -n -g -a CuaDriver --args serve` (the
    recommended form — goes through LaunchServices so TCC attributes
    the process to CuaDriver.app). `cua-driver serve &` also works;

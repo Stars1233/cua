@@ -120,14 +120,14 @@ Launch an app hidden (no focus steal) and return its pid plus the initial `windo
 
 ### check_permissions
 
-Report TCC permission status for Accessibility and Screen Recording.
+Report TCC permission status for Accessibility and Screen Recording. By default also raises the system permission dialogs for any missing grants — Apple's request APIs no-op when the grant is already active, so the call is safe to repeat.
 
 **Arguments:**
 
-- `prompt` (boolean, optional): If true, raise the system permission prompts for any missing grants. Otherwise the call is purely read-only.
+- `prompt` (boolean, optional): Raise the system permission prompts for missing grants. Default `true`. Pass `false` for a purely read-only status check.
 
 ```json
-{"prompt": true}
+{"prompt": false}
 ```
 
 ## Mouse
