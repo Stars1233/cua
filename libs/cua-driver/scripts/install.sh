@@ -79,6 +79,29 @@ if [[ ! -d "$TMP_DIR/$APP_NAME" ]]; then
     exit 1
 fi
 
+# --- Clean up legacy bits from ≤ v0.0.5 ---------------------------------
+#
+# v0.0.5 and earlier installed a weekly LaunchAgent + companion
+# /usr/local/bin/cua-driver-update script. v0.0.6 dropped both in favor
+# of an explicit `cua-driver update` command. Removing the legacy bits
+# during upgrade keeps the system clean and stops the old LaunchAgent
+# from firing the v0.0.5 update script weekly after the upgrade.
+
+LEGACY_UPDATE_SCRIPT="/usr/local/bin/cua-driver-update"
+LEGACY_UPDATER_PLIST="$HOME/Library/LaunchAgents/com.trycua.cua_driver_updater.plist"
+
+if [[ -f "$LEGACY_UPDATER_PLIST" ]]; then
+    launchctl unload "$LEGACY_UPDATER_PLIST" 2>/dev/null || true
+    rm -f "$LEGACY_UPDATER_PLIST"
+    log "removed legacy LaunchAgent $LEGACY_UPDATER_PLIST"
+fi
+if [[ -f "$LEGACY_UPDATE_SCRIPT" ]]; then
+    SUDO_LEGACY=""
+    [[ ! -w "$(dirname "$LEGACY_UPDATE_SCRIPT")" ]] && SUDO_LEGACY="sudo"
+    $SUDO_LEGACY rm -f "$LEGACY_UPDATE_SCRIPT"
+    log "removed legacy $LEGACY_UPDATE_SCRIPT"
+fi
+
 # --- Install .app bundle ------------------------------------------------
 
 if [[ -e "$APP_DEST" ]]; then
