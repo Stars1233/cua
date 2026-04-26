@@ -158,19 +158,22 @@ log "cua-driver $VERSION installed"
 cat << 'FINALEOF'
 
 Next steps:
-  1. Start the daemon so TCC attributes requests to CuaDriver.app:
+
+  1. Grant macOS permissions (required either way):
        open -n -g -a CuaDriver --args serve
-
-  2. Trigger the Accessibility + Screen Recording prompts:
        cua-driver check_permissions
-     macOS will raise the system dialogs. Grant both, then re-run
-     the command to confirm it reports all green.
+     macOS raises the Accessibility + Screen Recording dialogs.
+     Grant both, then re-run check_permissions to confirm.
 
-  3. Wire into your MCP client (Claude Code, Cursor, etc.):
-       cua-driver mcp-config | pbcopy
+  2. Pick how you want to use cua-driver — pick ONE, both, or switch later:
 
-  4. Or drive directly from the shell:
-       cua-driver list_apps
+     A. As a CLI from the shell (no extra config needed):
+          cua-driver list_apps
+          cua-driver --help
+
+     B. As an MCP server for Claude Code / Cursor / other MCP clients:
+          cua-driver mcp-config | pbcopy
+        Paste into ~/.claude/mcp.json (or your client's equivalent).
 
 Docs: https://github.com/trycua/cua/tree/main/libs/cua-driver
 FINALEOF
