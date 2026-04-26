@@ -261,6 +261,29 @@ public enum GetWindowStateTool {
                     )
                 }
                 content.append(.text(text: textContent, annotations: nil, _meta: nil))
+                // Strip the b64 bytes from the structured snapshot — the image
+                // is already the first content block and tests just need the
+                // metadata fields (screenshot_scale_factor, dimensions, etc.).
+                let structuredSnapshot = AppStateSnapshot(
+                    pid: snapshot.pid,
+                    bundleId: snapshot.bundleId,
+                    name: snapshot.name,
+                    treeMarkdown: snapshot.treeMarkdown,
+                    elementCount: snapshot.elementCount,
+                    turnId: snapshot.turnId,
+                    screenshotPngBase64: nil,
+                    screenshotWidth: snapshot.screenshotWidth,
+                    screenshotHeight: snapshot.screenshotHeight,
+                    screenshotScaleFactor: snapshot.screenshotScaleFactor,
+                    screenshotOriginalWidth: snapshot.screenshotOriginalWidth,
+                    screenshotOriginalHeight: snapshot.screenshotOriginalHeight
+                )
+                if let result = try? CallTool.Result(
+                    content: content,
+                    structuredContent: structuredSnapshot
+                ) {
+                    return result
+                }
                 return CallTool.Result(content: content)
             } catch let error as AppStateError {
                 return errorResult(error.description)
