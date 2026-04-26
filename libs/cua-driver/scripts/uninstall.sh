@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # cua-driver uninstaller. Removes everything install.sh laid down:
 #
-#   - /usr/local/bin/cua-driver symlink
+#   - ~/.local/bin/cua-driver symlink
 #   - /Applications/CuaDriver.app bundle
 #   - ~/.cua-driver/ (telemetry id + install marker)
 #   - ~/Library/Application Support/Cua Driver/ (config.json)

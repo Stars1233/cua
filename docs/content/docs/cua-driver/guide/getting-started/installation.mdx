@@ -202,7 +202,7 @@ rm -f ~/Library/LaunchAgents/com.trycua.cua_driver_updater.plist
 
 ## Troubleshooting
 
-**`cua-driver: command not found`** — `/usr/local/bin` isn't on your PATH. Add it and reload (see the first-time install callout above).
+**`cua-driver: command not found`** — `~/.local/bin` isn't on your PATH. Add it and reload (see the first-time install callout above).
 
 **Permissions dialogs reappear after every launch** — macOS is attributing the process to a different bundle id than the one you granted. Run `cua-driver diagnose` and paste the output when filing an issue; it reports cdhash, team id, and which bundle TCC is checking against.
 
