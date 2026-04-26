@@ -20,15 +20,14 @@ enum VersionCheck {
               let releases = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
         else { return nil }
 
-        for release in releases {
+        return releases.compactMap { release -> String? in
             guard let tag = release["tag_name"] as? String,
                   tag.hasPrefix(tagPrefix),
                   release["draft"] as? Bool != true,
                   release["prerelease"] as? Bool != true
-            else { continue }
+            else { return nil }
             return String(tag.dropFirst(tagPrefix.count))
-        }
-        return nil
+        }.max(by: { isNewer($1, than: $0) })
     }
 
     /// True when `candidate` is strictly newer than `current` (semver compare).

@@ -70,8 +70,10 @@ else
     log "resolving latest $TAG_PREFIX* release via GitHub API"
     TAG=$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=40" \
         | grep -Eo '"tag_name":[[:space:]]*"'"${TAG_PREFIX}"'[^"]+"' \
+        | sed -E 's/.*"'"${TAG_PREFIX}"'([0-9]+[.][0-9]+[.][0-9]+)"/\1/' \
+        | sort -t. -k1,1nr -k2,2nr -k3,3nr \
         | head -n 1 \
-        | sed -E 's/.*"'"${TAG_PREFIX}"'([^"]+)"/'"${TAG_PREFIX}"'\1/')
+        | sed -E 's/^/'"${TAG_PREFIX}"'/')
     if [[ -z "$TAG" ]]; then
         err "no release matching ${TAG_PREFIX}* found on $REPO"
         exit 1
