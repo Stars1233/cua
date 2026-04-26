@@ -11,17 +11,21 @@ Install Cua Driver with a single command:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install.sh)"
 ```
 
-The installer drops `CuaDriver.app` into `/Applications` and symlinks the binary at `/usr/local/bin/cua-driver`. Both are signed with the same bundle id (`com.trycua.driver`) so TCC grants survive rebuilds.
+The installer drops `CuaDriver.app` into `/Applications` and symlinks the binary at `~/.local/bin/cua-driver`. The bundle is signed under `com.trycua.driver`, so TCC grants survive every release.
 
-<Callout type="warn">
-**First-time install?** If `/usr/local/bin` isn't in your PATH, add it and reload:
+The install runs **without sudo**: `/Applications` is user-writable on personal Macs, and the CLI symlink lives under `$HOME`. If `~/.local/bin` is not on your PATH, the installer detects your shell (`zsh` / `bash` / `fish`) and appends an `export PATH=...` line to the right rc file. Reload with `source ~/.zshrc` (or restart your terminal).
+
+<Callout type="info">
+**Power users:** override the install path with `--bin-dir` (or `CUA_DRIVER_BIN_DIR`). Use `--no-modify-path` if you'd rather edit your shell rc yourself.
 
 ```bash
-echo 'export PATH="$PATH:/usr/local/bin"' >> ~/.zshrc
-source ~/.zshrc
+/bin/bash -c "$(curl -fsSL .../install.sh)" -- --bin-dir=/usr/local/bin    # legacy system path (needs sudo)
+/bin/bash -c "$(curl -fsSL .../install.sh)" -- --no-modify-path            # don't touch shell rc
 ```
+</Callout>
 
-Or restart your terminal after the first command.
+<Callout type="warn">
+**Upgrading from v0.0.x?** The new installer puts the CLI at `~/.local/bin/cua-driver`. Any existing `/usr/local/bin/cua-driver` symlink is left in place so existing MCP client configs (Claude Code, Codex, etc.) keep working. Re-register them at your leisure to use the new path.
 </Callout>
 
 ### Verify it worked
@@ -107,10 +111,10 @@ Cua Driver speaks MCP over stdio. Use `cua-driver mcp-config --client <name>` to
 
 ```bash
 # Claude Code (add --scope project|global as needed)
-claude mcp add --transport stdio cua-driver -- /usr/local/bin/cua-driver mcp
+claude mcp add --transport stdio cua-driver -- ~/.local/bin/cua-driver mcp
 
 # Codex (OpenAI)
-codex mcp add cua-driver -- /usr/local/bin/cua-driver mcp
+codex mcp add cua-driver -- ~/.local/bin/cua-driver mcp
 
 # OpenClaw
 cua-driver mcp-config --client openclaw | sh
@@ -182,7 +186,9 @@ cua-driver stop 2>/dev/null
 
 # Remove the app and the CLI symlink.
 rm -rf /Applications/CuaDriver.app
-rm -f /usr/local/bin/cua-driver
+rm -f ~/.local/bin/cua-driver
+# legacy install path (only present on installs from before v0.1.0)
+sudo rm -f /usr/local/bin/cua-driver 2>/dev/null || true
 
 # Optional: remove config + telemetry state.
 rm -rf ~/.cua-driver

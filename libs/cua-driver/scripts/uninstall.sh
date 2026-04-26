@@ -12,7 +12,8 @@
 #   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/uninstall.sh)"
 set -euo pipefail
 
-BIN_LINK="/usr/local/bin/cua-driver"
+USER_BIN_LINK="$HOME/.local/bin/cua-driver"
+SYSTEM_BIN_LINK="/usr/local/bin/cua-driver"
 APP_BUNDLE="/Applications/CuaDriver.app"
 USER_DATA="$HOME/.cua-driver"
 CONFIG_DIR="$HOME/Library/Application Support/Cua Driver"
@@ -22,17 +23,16 @@ LEGACY_UPDATER_PLIST="$HOME/Library/LaunchAgents/com.trycua.cua_driver_updater.p
 
 log() { printf '==> %s\n' "$*"; }
 
-# Symlink (may need sudo on some systems).
-if [[ -L "$BIN_LINK" ]] || [[ -e "$BIN_LINK" ]]; then
-    SUDO=""
-    if [[ ! -w "$(dirname "$BIN_LINK")" ]]; then
-        SUDO="sudo"
+# CLI symlinks. Try the user-bin first (no sudo), then the legacy
+# /usr/local/bin path (needs sudo on default macOS).
+for BIN_LINK in "$USER_BIN_LINK" "$SYSTEM_BIN_LINK"; do
+    if [[ -L "$BIN_LINK" ]] || [[ -e "$BIN_LINK" ]]; then
+        SUDO=""
+        [[ ! -w "$(dirname "$BIN_LINK")" ]] && SUDO="sudo"
+        $SUDO rm -f "$BIN_LINK"
+        log "removed $BIN_LINK"
     fi
-    $SUDO rm -f "$BIN_LINK"
-    log "removed $BIN_LINK"
-else
-    log "no symlink at $BIN_LINK (skipping)"
-fi
+done
 
 # Legacy update script + LaunchAgent (present in installs before 0.0.6).
 if [[ -f "$LEGACY_UPDATE_SCRIPT" ]]; then
