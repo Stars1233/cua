@@ -23,6 +23,7 @@ struct CuaDriverCommand: AsyncParsableCommand {
             MCPConfigCommand.self,
             UpdateCommand.self,
             DiagnoseCommand.self,
+            DoctorCommand.self,
         ]
     )
 }
@@ -98,6 +99,7 @@ struct CuaDriverEntryPoint {
         "config",
         "update",
         "diagnose",
+        "doctor",
         "help",
     ]
 
@@ -374,6 +376,86 @@ struct UpdateCommand: AsyncParsableCommand {
         if proc.terminationStatus != 0 {
             print("Installation failed — run the command above manually for details.")
             throw ExitCode(Int32(proc.terminationStatus))
+        }
+    }
+}
+
+/// `cua-driver doctor` — clean up stale install bits left from older versions.
+///
+/// v0.0.5 and earlier installed a weekly LaunchAgent at
+/// `~/Library/LaunchAgents/com.trycua.cua_driver_updater.plist` and a companion
+/// `/usr/local/bin/cua-driver-update` script. v0.0.6 dropped both in favor of
+/// the explicit `cua-driver update` command, but users who upgraded via the
+/// legacy auto-updater path still have these dead files lingering.
+///
+/// Removing the LaunchAgent stops the weekly cron from firing the stale
+/// update script. The plist lives under `$HOME` (no sudo). The companion
+/// script under `/usr/local/bin` is root-owned, so we print the exact
+/// `sudo rm` command for the user to run if it still exists.
+struct DoctorCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "doctor",
+        abstract: "Clean up stale install bits left from older cua-driver versions."
+    )
+
+    func run() throws {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let legacyPlist = "\(home)/Library/LaunchAgents/com.trycua.cua_driver_updater.plist"
+        let legacyScript = "/usr/local/bin/cua-driver-update"
+
+        var removedCount = 0
+        var manualSteps: [String] = []
+
+        // LaunchAgent — no sudo needed, lives under $HOME.
+        if FileManager.default.fileExists(atPath: legacyPlist) {
+            // Best-effort unload before removal — tolerate failure since the
+            // agent may not be loaded.
+            let unload = Process()
+            unload.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+            unload.arguments = ["unload", legacyPlist]
+            unload.standardOutput = Pipe()
+            unload.standardError = Pipe()
+            try? unload.run()
+            unload.waitUntilExit()
+
+            do {
+                try FileManager.default.removeItem(atPath: legacyPlist)
+                print("✓ removed legacy LaunchAgent: \(legacyPlist)")
+                removedCount += 1
+            } catch {
+                print("✗ could not remove \(legacyPlist): \(error)")
+            }
+        }
+
+        // Update script — root-owned. Try without sudo first; on failure,
+        // surface the exact command for the user to run manually.
+        if FileManager.default.fileExists(atPath: legacyScript) {
+            if FileManager.default.isWritableFile(atPath: legacyScript)
+               && FileManager.default.isWritableFile(atPath: "/usr/local/bin")
+            {
+                do {
+                    try FileManager.default.removeItem(atPath: legacyScript)
+                    print("✓ removed legacy update script: \(legacyScript)")
+                    removedCount += 1
+                } catch {
+                    manualSteps.append("sudo rm -f \(legacyScript)")
+                }
+            } else {
+                manualSteps.append("sudo rm -f \(legacyScript)")
+            }
+        }
+
+        if removedCount == 0 && manualSteps.isEmpty {
+            print("Nothing to clean — install is up to date.")
+            return
+        }
+
+        if !manualSteps.isEmpty {
+            print("")
+            print("The following needs to be removed manually (root-owned):")
+            for step in manualSteps {
+                print("  \(step)")
+            }
         }
     }
 }
