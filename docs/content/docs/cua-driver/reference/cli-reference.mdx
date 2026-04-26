@@ -144,7 +144,13 @@ No flags. Use `cua-driver mcp-config` to generate a paste-able client config sni
 
 ### cua-driver mcp-config
 
-Print an MCP client config snippet pointing at this binary.
+Print MCP server config or a client-specific install command.
+
+**Flags:**
+
+- `--client <name>` (optional): one of `claude`, `codex`, `cursor`. Omit for the generic JSON snippet that any MCP client accepts.
+
+**Generic JSON (default):**
 
 ```bash
 cua-driver mcp-config
@@ -158,7 +164,20 @@ cua-driver mcp-config
 # }
 ```
 
-Paste into `~/.claude/mcp.json` (Claude Code) or the equivalent for your MCP client.
+**Client-specific install commands:**
+
+```bash
+cua-driver mcp-config --client claude
+# claude mcp add --transport stdio cua-driver -- /Applications/CuaDriver.app/Contents/MacOS/cua-driver mcp
+
+cua-driver mcp-config --client codex
+# codex mcp add cua-driver -- /Applications/CuaDriver.app/Contents/MacOS/cua-driver mcp
+
+cua-driver mcp-config --client cursor
+# JSON snippet to paste into ~/.cursor/mcp.json (Cursor has no CLI)
+```
+
+Pipe to `pbcopy` to put on the clipboard, or use the printed `claude` / `codex` commands directly.
 
 ## Trajectory recording
 
@@ -291,14 +310,24 @@ Use this when filing an issue about permissions or install problems.
 
 ### cua-driver update
 
-Trigger a manual update check and optionally apply updates. Refuses to run when auto-update is disabled.
+Check GitHub for a newer cua-driver release and optionally apply it.
 
 ```bash
-cua-driver update
-cua-driver update --silent
+cua-driver update              # report what's available
+cua-driver update --apply      # download and install the latest release
 ```
 
-**Flags:** `--silent` — apply updates silently without prompting.
+**Flags:** `--apply` — download and apply the update without prompting. Without this flag, `update` only reports the available version and the install command.
+
+### cua-driver doctor
+
+Clean up stale install bits left from older cua-driver versions (`≤ v0.0.5`) — the legacy weekly LaunchAgent and the `/usr/local/bin/cua-driver-update` companion script that v0.0.6 dropped.
+
+```bash
+cua-driver doctor
+```
+
+Idempotent and safe to re-run. Prints `Nothing to clean — install is up to date.` when there's nothing to do. The `~/Library/LaunchAgents/...` plist is removed automatically; the `/usr/local/bin/cua-driver-update` script (root-owned) is surfaced as a `sudo rm -f` command for the user to run manually.
 
 ## Global options
 

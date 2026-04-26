@@ -97,28 +97,41 @@ cua-driver stop
 
 `open -n -g -a CuaDriver --args serve` is the recommended form because LaunchServices attributes the process to `CuaDriver.app`'s bundle id, which is what the user actually granted TCC against. `cua-driver serve &` also works and auto-relaunches itself via `open` when it detects the wrong TCC context.
 
-## Register with an MCP client
+## Register with an MCP client (optional)
 
-Cua Driver speaks MCP over stdio. Generate a client config snippet:
+The MCP server is one of two ways to use cua-driver — skip this section if you only want the CLI (`cua-driver list_apps`, etc.). You can register both later, MCP and CLI work side-by-side.
+
+Cua Driver speaks MCP over stdio. Pick the command for your client:
+
+### Claude Code
 
 ```bash
-cua-driver mcp-config
+claude mcp add --transport stdio cua-driver -- /usr/local/bin/cua-driver mcp
 ```
 
-Output:
+Add `--scope project` to register only for the current repo, or `--scope global` for every project.
 
-```json
-{
-  "mcpServers": {
-    "cua-driver": {
-      "command": "/Applications/CuaDriver.app/Contents/MacOS/cua-driver",
-      "args": ["mcp"]
-    }
-  }
-}
+### Codex (OpenAI)
+
+```bash
+codex mcp add cua-driver -- /usr/local/bin/cua-driver mcp
 ```
 
-Paste into `~/.claude/mcp.json` (Claude Code) or the equivalent config for your client. The client spawns `cua-driver mcp` on demand.
+### Cursor / other clients
+
+Cursor has no CLI for MCP — paste the JSON into `~/.cursor/mcp.json` (or your client's equivalent):
+
+```bash
+cua-driver mcp-config --client cursor | pbcopy
+```
+
+For any other client that accepts the standard `mcpServers` shape:
+
+```bash
+cua-driver mcp-config | pbcopy
+```
+
+The client spawns `cua-driver mcp` on demand once registered.
 
 ## Uninstall
 
