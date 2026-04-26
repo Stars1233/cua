@@ -171,9 +171,19 @@ Next steps:
           cua-driver list_apps
           cua-driver --help
 
-     B. As an MCP server for Claude Code / Cursor / other MCP clients:
-          cua-driver mcp-config | pbcopy
-        Paste into ~/.claude/mcp.json (or your client's equivalent).
+     B. As an MCP server — run the one matching your client:
+
+        • Claude Code:
+            claude mcp add --transport stdio cua-driver -- /usr/local/bin/cua-driver mcp
+
+        • Codex (OpenAI):
+            codex mcp add cua-driver -- /usr/local/bin/cua-driver mcp
+
+        • Cursor / other clients (paste JSON into the client's mcp config):
+            cua-driver mcp-config --client cursor
+
+        For other clients accepting the generic shape:
+            cua-driver mcp-config
 
 Docs: https://github.com/trycua/cua/tree/main/libs/cua-driver
 FINALEOF

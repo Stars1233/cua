@@ -35,26 +35,53 @@ struct CuaDriverCommand: AsyncParsableCommand {
 struct MCPConfigCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "mcp-config",
-        abstract: "Print an MCP client config snippet pointing at this binary."
+        abstract: "Print MCP server config or a client-specific install command."
     )
 
+    @Option(name: .customLong("client"),
+            help: "Client to print the install command for: claude | codex | cursor. Omit for the generic JSON snippet.")
+    var client: String?
+
     func run() throws {
-        // Resolve the binary path. Prefer the running executable's
-        // path so the snippet references the bundled binary in
-        // `/Applications/CuaDriver.app/...` even when `cua-driver`
-        // itself was invoked via a `/usr/local/bin/` symlink.
         let binary = resolvedBinaryPath()
-        let snippet = """
-        {
-          "mcpServers": {
-            "cua-driver": {
-              "command": "\(binary)",
-              "args": ["mcp"]
+        switch client?.lowercased() {
+        case nil, "":
+            let snippet = """
+            {
+              "mcpServers": {
+                "cua-driver": {
+                  "command": "\(binary)",
+                  "args": ["mcp"]
+                }
+              }
             }
-          }
+            """
+            print(snippet)
+        case "claude":
+            print("claude mcp add --transport stdio cua-driver -- \(binary) mcp")
+        case "codex":
+            print("codex mcp add cua-driver -- \(binary) mcp")
+        case "cursor":
+            // Cursor has no CLI — emit JSON the user pastes into
+            // ~/.cursor/mcp.json (global) or .cursor/mcp.json (project).
+            let snippet = """
+            {
+              "mcpServers": {
+                "cua-driver": {
+                  "command": "\(binary)",
+                  "args": ["mcp"],
+                  "type": "stdio"
+                }
+              }
+            }
+            """
+            print(snippet)
+        default:
+            FileHandle.standardError.write(Data(
+                "Unknown client '\(client!)'. Valid: claude, codex, cursor.\n".utf8
+            ))
+            throw ExitCode(2)
         }
-        """
-        print(snippet)
     }
 
     private func resolvedBinaryPath() -> String {
