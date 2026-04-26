@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Shared Chrome DevTools Protocol (CDP) HTTP + WebSocket evaluator.
 ///
@@ -93,13 +94,13 @@ public enum CDPClient {
 
             // Single-resume guard: ensures the continuation is resumed exactly once
             // even if the timeout fires concurrently with a late-arriving frame.
-            let lock = NSLock()
-            var resumed = false
-            func resumeOnce(_ action: () -> Void) {
-                lock.lock()
-                defer { lock.unlock() }
-                guard !resumed else { return }
-                resumed = true
+            let once = OSAllocatedUnfairLock(initialState: false)
+            let resumeOnce: @Sendable (() -> Void) -> Void = { action in
+                let shouldRun = once.withLock { (fired: inout Bool) -> Bool in
+                    guard !fired else { return false }
+                    fired = true; return true
+                }
+                guard shouldRun else { return }
                 action()
             }
 

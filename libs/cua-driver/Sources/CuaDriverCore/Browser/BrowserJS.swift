@@ -20,6 +20,7 @@ public enum BrowserJS {
         case windowNotFound(UInt32)
         case javascriptNotEnabled(String)
         case executionFailed(String)
+        case enableFailed(String)
 
         public var description: String {
             switch self {
@@ -37,7 +38,75 @@ public enum BrowserJS {
                     + "for the programmatic setup path (quit browser → edit Preferences JSON → relaunch)."
             case .executionFailed(let detail):
                 return "JavaScript execution failed: \(detail)"
+            case .enableFailed(let detail):
+                return "Failed to enable 'Allow JavaScript from Apple Events': \(detail)"
             }
+        }
+    }
+
+    // MARK: - Enable Apple Events JS
+
+    /// Quit `bundleId`, patch every profile's Preferences JSON to set
+    /// `browser.allow_javascript_apple_events = true`, then relaunch.
+    public static func enableJavaScriptAppleEvents(bundleId: String) async throws {
+        guard let appName = browserSpec(for: bundleId)?.appName else {
+            throw Error.unsupportedBrowser(bundleId)
+        }
+
+        // Quit the browser and wait for it to exit (Chrome writes Preferences on quit).
+        let quitScript = "tell application \"\(appName)\" to quit"
+        _ = try? await runAppleScript(quitScript, appName: appName)
+        try await Task.sleep(for: .seconds(1))
+
+        guard let profDir = profilesDirectory(for: bundleId) else {
+            throw Error.enableFailed("No profiles directory found for \(bundleId)")
+        }
+        let fm = FileManager.default
+        let prefsFiles = (try? fm.contentsOfDirectory(atPath: profDir))?.compactMap { entry -> String? in
+            let candidate = (profDir as NSString).appendingPathComponent(entry + "/Preferences")
+            return fm.fileExists(atPath: candidate) ? candidate : nil
+        } ?? []
+
+        if prefsFiles.isEmpty {
+            throw Error.enableFailed("No Preferences files found under \(profDir)")
+        }
+
+        for path in prefsFiles {
+            guard let data = fm.contents(atPath: path),
+                  var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else { continue }
+            var browser = json["browser"] as? [String: Any] ?? [:]
+            browser["allow_javascript_apple_events"] = true
+            json["browser"] = browser
+            // Chrome syncs this setting; patch account_values too so it survives a sync cycle.
+            var accountValues = json["account_values"] as? [String: Any] ?? [:]
+            var avBrowser = accountValues["browser"] as? [String: Any] ?? [:]
+            avBrowser["allow_javascript_apple_events"] = true
+            accountValues["browser"] = avBrowser
+            json["account_values"] = accountValues
+            guard let patched = try? JSONSerialization.data(withJSONObject: json) else { continue }
+            try patched.write(to: URL(fileURLWithPath: path))
+        }
+
+        // Relaunch.
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        proc.arguments = ["-a", appName]
+        try proc.run()
+        proc.waitUntilExit()
+    }
+
+    private static func profilesDirectory(for bundleId: String) -> String? {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        switch bundleId {
+        case "com.google.Chrome":
+            return "\(home)/Library/Application Support/Google/Chrome"
+        case "com.brave.Browser":
+            return "\(home)/Library/Application Support/BraveSoftware/Brave-Browser"
+        case "com.microsoft.edgemac":
+            return "\(home)/Library/Application Support/Microsoft Edge"
+        default:
+            return nil
         }
     }
 
@@ -173,15 +242,19 @@ public enum BrowserJS {
                 }
             }
 
-            let timeoutItem = DispatchWorkItem {
+            // Cancellation flag: set by terminationHandler to stop the timeout
+            // from firing after natural completion. OSAllocatedUnfairLock is
+            // Sendable, so it can safely cross concurrency boundaries.
+            let timedOut = OSAllocatedUnfairLock(initialState: false)
+            DispatchQueue.global().asyncAfter(deadline: .now() + 15) {
+                guard !timedOut.withLock({ $0 }) else { return }
                 proc.terminate()
                 resumeOnce(.failure(Error.executionFailed(
                     "osascript timed out after 15 s — browser may be showing a permission dialog")))
             }
-            DispatchQueue.global().asyncAfter(deadline: .now() + 15, execute: timeoutItem)
 
             proc.terminationHandler = { p in
-                timeoutItem.cancel()
+                timedOut.withLock { $0 = true }
                 let out = String(
                     data: stdout.fileHandleForReading.readDataToEndOfFile(),
                     encoding: .utf8
@@ -201,7 +274,7 @@ public enum BrowserJS {
             do {
                 try proc.run()
             } catch {
-                timeoutItem.cancel()
+                timedOut.withLock { $0 = true }
                 resumeOnce(.failure(error))
             }
         }
