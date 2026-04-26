@@ -179,10 +179,15 @@ Next steps:
         • Codex (OpenAI):
             codex mcp add cua-driver -- /usr/local/bin/cua-driver mcp
 
-        • Cursor / other clients (paste JSON into the client's mcp config):
-            cua-driver mcp-config --client cursor
+        • OpenClaw:
+            cua-driver mcp-config --client openclaw   # prints the openclaw cmd
 
-        For other clients accepting the generic shape:
+        • Cursor / OpenCode / Hermes (no add CLI — paste config):
+            cua-driver mcp-config --client cursor     # JSON for ~/.cursor/mcp.json
+            cua-driver mcp-config --client opencode   # JSON for opencode.json
+            cua-driver mcp-config --client hermes     # YAML for ~/.hermes/config.yaml
+
+        For other clients accepting the generic mcpServers shape:
             cua-driver mcp-config
 
 Docs: https://github.com/trycua/cua/tree/main/libs/cua-driver

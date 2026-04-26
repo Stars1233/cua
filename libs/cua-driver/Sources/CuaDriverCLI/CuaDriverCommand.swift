@@ -39,24 +39,14 @@ struct MCPConfigCommand: ParsableCommand {
     )
 
     @Option(name: .customLong("client"),
-            help: "Client to print the install command for: claude | codex | cursor. Omit for the generic JSON snippet.")
+            help: "Client to print the install command for: claude | codex | cursor | openclaw | opencode | hermes | pi. Omit for the generic JSON snippet.")
     var client: String?
 
     func run() throws {
         let binary = resolvedBinaryPath()
         switch client?.lowercased() {
         case nil, "":
-            let snippet = """
-            {
-              "mcpServers": {
-                "cua-driver": {
-                  "command": "\(binary)",
-                  "args": ["mcp"]
-                }
-              }
-            }
-            """
-            print(snippet)
+            print(genericMcpServersSnippet(binary: binary, includeType: false))
         case "claude":
             print("claude mcp add --transport stdio cua-driver -- \(binary) mcp")
         case "codex":
@@ -64,24 +54,66 @@ struct MCPConfigCommand: ParsableCommand {
         case "cursor":
             // Cursor has no CLI — emit JSON the user pastes into
             // ~/.cursor/mcp.json (global) or .cursor/mcp.json (project).
+            print(genericMcpServersSnippet(binary: binary, includeType: true))
+        case "openclaw":
+            // OpenClaw has a CLI registry — set with a JSON arg.
+            print("openclaw mcp set cua-driver '{\"command\":\"\(binary)\",\"args\":[\"mcp\"]}'")
+        case "opencode":
+            // OpenCode (sst/opencode) uses opencode.json with type:"local"
+            // and command as a single merged array.
             let snippet = """
+            // paste under "mcp" in opencode.json (or opencode.jsonc):
             {
-              "mcpServers": {
+              "$schema": "https://opencode.ai/config.json",
+              "mcp": {
                 "cua-driver": {
-                  "command": "\(binary)",
-                  "args": ["mcp"],
-                  "type": "stdio"
+                  "type": "local",
+                  "command": ["\(binary)", "mcp"],
+                  "enabled": true
                 }
               }
             }
             """
             print(snippet)
+        case "hermes":
+            // Hermes (NousResearch) — YAML at ~/.hermes/config.yaml.
+            // Reload inside Hermes with /reload-mcp after editing.
+            let snippet = """
+            # paste under mcp_servers in ~/.hermes/config.yaml,
+            # then run /reload-mcp inside Hermes:
+            mcp_servers:
+              cua-driver:
+                command: "\(binary)"
+                args: ["mcp"]
+            """
+            print(snippet)
+        case "pi":
+            FileHandle.standardError.write(Data(
+                ("Pi (badlogic/pi-mono) does not support MCP natively — author has stated MCP support will not be added "
+                 + "for context-budget reasons.\n"
+                 + "Community workarounds: 0xKobold/pi-mcp, nicobailon/pi-mcp-adapter (npm).\n").utf8
+            ))
+            throw ExitCode(2)
         default:
             FileHandle.standardError.write(Data(
-                "Unknown client '\(client!)'. Valid: claude, codex, cursor.\n".utf8
+                ("Unknown client '\(client!)'. Valid: claude, codex, cursor, openclaw, opencode, hermes, pi.\n").utf8
             ))
             throw ExitCode(2)
         }
+    }
+
+    private func genericMcpServersSnippet(binary: String, includeType: Bool) -> String {
+        let typeLine = includeType ? ",\n      \"type\": \"stdio\"" : ""
+        return """
+        {
+          "mcpServers": {
+            "cua-driver": {
+              "command": "\(binary)",
+              "args": ["mcp"]\(typeLine)
+            }
+          }
+        }
+        """
     }
 
     private func resolvedBinaryPath() -> String {

@@ -101,35 +101,46 @@ cua-driver stop
 
 The MCP server is one of two ways to use cua-driver — skip this section if you only want the CLI (`cua-driver list_apps`, etc.). You can register both later, MCP and CLI work side-by-side.
 
-Cua Driver speaks MCP over stdio. Pick the command for your client:
+Cua Driver speaks MCP over stdio. Use `cua-driver mcp-config --client <name>` to print the right command for your client, or copy one of the snippets below directly:
 
-### Claude Code
+### Clients with a CLI add command
 
 ```bash
+# Claude Code (add --scope project|global as needed)
 claude mcp add --transport stdio cua-driver -- /usr/local/bin/cua-driver mcp
-```
 
-Add `--scope project` to register only for the current repo, or `--scope global` for every project.
-
-### Codex (OpenAI)
-
-```bash
+# Codex (OpenAI)
 codex mcp add cua-driver -- /usr/local/bin/cua-driver mcp
+
+# OpenClaw
+cua-driver mcp-config --client openclaw | sh
 ```
 
-### Cursor / other clients
+### Clients configured via a config file
 
-Cursor has no CLI for MCP — paste the JSON into `~/.cursor/mcp.json` (or your client's equivalent):
+Cursor, OpenCode, and Hermes all configure MCP servers via files. Use `mcp-config` to print the exact snippet, paste it into the right path:
 
 ```bash
+# Cursor — paste into ~/.cursor/mcp.json (or .cursor/mcp.json for project scope)
 cua-driver mcp-config --client cursor | pbcopy
+
+# OpenCode (sst/opencode) — paste into opencode.json at the project root
+cua-driver mcp-config --client opencode | pbcopy
+
+# Hermes (NousResearch) — paste into ~/.hermes/config.yaml,
+# then run `/reload-mcp` inside Hermes
+cua-driver mcp-config --client hermes | pbcopy
 ```
 
-For any other client that accepts the standard `mcpServers` shape:
+For any other client that accepts the standard `mcpServers` JSON shape:
 
 ```bash
 cua-driver mcp-config | pbcopy
 ```
+
+<Callout type="info">
+**Pi (badlogic/pi-mono)** does not support MCP natively. Community workarounds exist (`0xKobold/pi-mcp`, `nicobailon/pi-mcp-adapter`) but are unsupported by us.
+</Callout>
 
 The client spawns `cua-driver mcp` on demand once registered.
 

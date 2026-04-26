@@ -148,7 +148,7 @@ Print MCP server config or a client-specific install command.
 
 **Flags:**
 
-- `--client <name>` (optional): one of `claude`, `codex`, `cursor`. Omit for the generic JSON snippet that any MCP client accepts.
+- `--client <name>` (optional): one of `claude`, `codex`, `cursor`, `openclaw`, `opencode`, `hermes`, `pi`. Omit for the generic JSON snippet that any MCP client accepts.
 
 **Generic JSON (default):**
 
@@ -166,18 +166,17 @@ cua-driver mcp-config
 
 **Client-specific install commands:**
 
-```bash
-cua-driver mcp-config --client claude
-# claude mcp add --transport stdio cua-driver -- /Applications/CuaDriver.app/Contents/MacOS/cua-driver mcp
+| Client | Output |
+|---|---|
+| `claude` | `claude mcp add --transport stdio cua-driver -- <path> mcp` |
+| `codex` | `codex mcp add cua-driver -- <path> mcp` |
+| `openclaw` | `openclaw mcp set cua-driver '{...}'` (CLI registry) |
+| `cursor` | JSON for `~/.cursor/mcp.json` (no CLI) |
+| `opencode` | JSON snippet for `opencode.json` (`type: "local"`) |
+| `hermes` | YAML for `~/.hermes/config.yaml`, then `/reload-mcp` inside Hermes |
+| `pi` | Errors — Pi does not support MCP natively |
 
-cua-driver mcp-config --client codex
-# codex mcp add cua-driver -- /Applications/CuaDriver.app/Contents/MacOS/cua-driver mcp
-
-cua-driver mcp-config --client cursor
-# JSON snippet to paste into ~/.cursor/mcp.json (Cursor has no CLI)
-```
-
-Pipe to `pbcopy` to put on the clipboard, or use the printed `claude` / `codex` commands directly.
+Pipe to `pbcopy` to put any output on the clipboard, or pass the printed `claude` / `codex` / `openclaw` commands straight to a shell.
 
 ## Trajectory recording
 
