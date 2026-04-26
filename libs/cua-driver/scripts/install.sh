@@ -130,27 +130,49 @@ $SUDO mkdir -p "$(dirname "$BIN_LINK")"
 $SUDO ln -sf "$APP_BINARY" "$BIN_LINK"
 log "symlinked $BIN_LINK -> $APP_BINARY"
 
-# --- Install Claude Code skill pack -------------------------------------
+# --- Install agent skill pack -------------------------------------------
 #
-# Detect Claude Code users (via ~/.claude/skills/ presence) and drop a
-# symlink pointing at the skill we shipped inside the bundle. Auto-updates
-# atomically replace /Applications/CuaDriver.app, so the symlink stays
-# valid across every release. Never overwrites an existing link or
-# directory — dev users with their own ~/.claude/skills/cua-driver symlink
-# pointing at a working copy of the repo keep theirs.
+# Drop a symlink for each detected agent that auto-loads SKILL.md skills:
+#   - Claude Code: scans ~/.claude/skills/ on startup
+#   - Codex     : scans ~/.agents/skills/ on startup (Codex adopted Anthropic's
+#                 SKILL.md format; the "agents" path is shared, not Codex-specific)
+#
+# Auto-updates atomically replace /Applications/CuaDriver.app so the symlinks
+# stay valid across every release. We never overwrite an existing link or
+# directory — dev users with a symlink pointing at a working copy of the repo
+# keep theirs.
 
-SKILL_LINK="$HOME/.claude/skills/cua-driver"
 SKILL_TARGET="$APP_DEST/Contents/Resources/Skills/cua-driver"
-if [[ -d "$HOME/.claude/skills" ]]; then
-    if [[ -e "$SKILL_LINK" ]] || [[ -L "$SKILL_LINK" ]]; then
-        log "skill link already exists at $SKILL_LINK (skipping)"
-    elif [[ -d "$SKILL_TARGET" ]]; then
-        ln -s "$SKILL_TARGET" "$SKILL_LINK"
-        log "symlinked Claude Code skill at $SKILL_LINK"
-    else
-        log "skill pack missing at $SKILL_TARGET (skipping; older release?)"
+
+link_skill_into() {
+    local parent_dir="$1"        # e.g. $HOME/.claude/skills
+    local label="$2"             # e.g. "Claude Code"
+    local link_path="$parent_dir/cua-driver"
+
+    if [[ ! -d "$parent_dir" ]]; then
+        return 0
     fi
+    if [[ -e "$link_path" ]] || [[ -L "$link_path" ]]; then
+        log "$label skill link already exists at $link_path (skipping)"
+        return 0
+    fi
+    if [[ ! -d "$SKILL_TARGET" ]]; then
+        log "skill pack missing at $SKILL_TARGET (skipping; older release?)"
+        return 0
+    fi
+    ln -s "$SKILL_TARGET" "$link_path"
+    log "symlinked $label skill at $link_path"
+}
+
+# Claude Code — only when ~/.claude/skills already exists (Claude installed).
+link_skill_into "$HOME/.claude/skills" "Claude Code"
+
+# Codex — create ~/.agents/skills if Codex is installed (~/.codex present)
+# but the agents skills dir hasn't been initialized yet, then link.
+if [[ -d "$HOME/.codex" ]] && [[ ! -d "$HOME/.agents/skills" ]]; then
+    mkdir -p "$HOME/.agents/skills"
 fi
+link_skill_into "$HOME/.agents/skills" "Codex"
 
 # --- Done ---------------------------------------------------------------
 

@@ -144,6 +144,25 @@ cua-driver mcp-config | pbcopy
 
 The client spawns `cua-driver mcp` on demand once registered.
 
+## Agent skills (auto-wired)
+
+The bundle ships an Anthropic-format SKILL.md pack at `/Applications/CuaDriver.app/Contents/Resources/Skills/cua-driver/`. The installer detects the agents you have and creates symlinks pointing them at the bundle so the skill auto-loads:
+
+| Agent | Skills directory | Auto-wired by installer |
+|---|---|---|
+| Claude Code | `~/.claude/skills/cua-driver` | when `~/.claude/skills/` exists |
+| Codex | `~/.agents/skills/cua-driver` | when `~/.codex/` exists (creates the agents dir if missing) |
+
+The symlink survives auto-updates because `/Applications/CuaDriver.app` is replaced atomically — the link target stays valid across releases.
+
+For agents without a SKILL.md auto-loader (Cursor, OpenClaw, OpenCode, Hermes, Pi), point them at the bundled skill manually if you want the same instructions:
+
+```bash
+cat /Applications/CuaDriver.app/Contents/Resources/Skills/cua-driver/SKILL.md
+```
+
+You can paste it into the agent's system prompt, instructions file, or whatever per-project context mechanism the agent uses (e.g. Cursor's `.cursorrules`, project-level `AGENTS.md`).
+
 ## Uninstall
 
 ```bash
