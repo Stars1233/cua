@@ -174,7 +174,7 @@ cua-driver mcp-config
 | `cursor` | JSON for `~/.cursor/mcp.json` (no CLI) |
 | `opencode` | JSON snippet for `opencode.json` (`type: "local"`) |
 | `hermes` | YAML for `~/.hermes/config.yaml`, then `/reload-mcp` inside Hermes |
-| `pi` | Errors — Pi does not support MCP natively |
+| `pi` | Points at the CLI path (Pi has no MCP — shell-out to `cua-driver` directly) |
 
 Pipe to `pbcopy` to put any output on the clipboard, or pass the printed `claude` / `codex` / `openclaw` commands straight to a shell.
 

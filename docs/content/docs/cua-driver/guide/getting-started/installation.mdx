@@ -139,7 +139,7 @@ cua-driver mcp-config | pbcopy
 ```
 
 <Callout type="info">
-**Pi (badlogic/pi-mono)** does not support MCP natively. Community workarounds exist (`0xKobold/pi-mcp`, `nicobailon/pi-mcp-adapter`) but are unsupported by us.
+**Pi (badlogic/pi-mono)** does not support MCP natively. Use cua-driver as a plain CLI from inside Pi instead — `cua-driver list_apps`, `cua-driver click '{...}'`, etc. — which is exactly the shape Pi is built around. Run `cua-driver mcp-config --client pi` for the full guidance, or see the [Quickstart](/cua-driver/guide/getting-started/quickstart) for CLI usage.
 </Callout>
 
 The client spawns `cua-driver mcp` on demand once registered.

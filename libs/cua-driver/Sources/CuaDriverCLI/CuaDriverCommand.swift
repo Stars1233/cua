@@ -88,12 +88,26 @@ struct MCPConfigCommand: ParsableCommand {
             """
             print(snippet)
         case "pi":
-            FileHandle.standardError.write(Data(
-                ("Pi (badlogic/pi-mono) does not support MCP natively — author has stated MCP support will not be added "
-                 + "for context-budget reasons.\n"
-                 + "Community workarounds: 0xKobold/pi-mcp, nicobailon/pi-mcp-adapter (npm).\n").utf8
-            ))
-            throw ExitCode(2)
+            // Pi (badlogic/pi-mono) intentionally rejects MCP. Skip MCP and
+            // point at the shell-tool path — Pi can shell-out to cua-driver
+            // directly the same way it would call any other CLI tool.
+            print("""
+            Pi (badlogic/pi-mono) does not support MCP natively — the author
+            has stated MCP support will not be added for context-budget reasons.
+
+            Use cua-driver as a plain CLI from inside Pi instead:
+
+                \(binary) list_apps
+                \(binary) click  '{"pid": 1234, "x": 100, "y": 200}'
+                \(binary) --help        # full tool catalog
+
+            Each call is one-shot and returns JSON / text on stdout, which is
+            exactly the shape Pi is designed around.
+
+            Community MCP shims also exist if you really need MCP semantics
+            (0xKobold/pi-mcp, nicobailon/pi-mcp-adapter) — these are not
+            supported by us.
+            """)
         default:
             FileHandle.standardError.write(Data(
                 ("Unknown client '\(client!)'. Valid: claude, codex, cursor, openclaw, opencode, hermes, pi.\n").utf8
