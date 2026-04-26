@@ -80,7 +80,9 @@ fi
 SKILL_TARGET_EXPECTED="$APP_BUNDLE/Contents/Resources/Skills/cua-driver"
 for SKILL_LINK in \
     "$HOME/.claude/skills/cua-driver" \
-    "$HOME/.agents/skills/cua-driver"; do
+    "$HOME/.agents/skills/cua-driver" \
+    "$HOME/.openclaw/skills/cua-driver" \
+    "$HOME/.config/opencode/skills/cua-driver"; do
     if [[ -L "$SKILL_LINK" ]] && [[ "$(readlink "$SKILL_LINK")" == "$SKILL_TARGET_EXPECTED" ]]; then
         rm -f "$SKILL_LINK"
         log "removed $SKILL_LINK"

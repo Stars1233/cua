@@ -151,17 +151,28 @@ The bundle ships an Anthropic-format SKILL.md pack at `/Applications/CuaDriver.a
 | Agent | Skills directory | Auto-wired by installer |
 |---|---|---|
 | Claude Code | `~/.claude/skills/cua-driver` | when `~/.claude/skills/` exists |
-| Codex | `~/.agents/skills/cua-driver` | when `~/.codex/` exists (creates the agents dir if missing) |
+| Codex | `~/.agents/skills/cua-driver` | when `~/.codex/` exists |
+| OpenClaw | `~/.openclaw/skills/cua-driver` | when `~/.openclaw/` exists |
+| OpenCode | `~/.config/opencode/skills/cua-driver` | when `~/.config/opencode/` exists |
 
-The symlink survives auto-updates because `/Applications/CuaDriver.app` is replaced atomically — the link target stays valid across releases.
+The installer creates the `skills/` subdirectory if missing, then drops the symlink. Symlinks survive auto-updates because `/Applications/CuaDriver.app` is replaced atomically — the link target stays valid across releases.
 
-For agents without a SKILL.md auto-loader (Cursor, OpenClaw, OpenCode, Hermes, Pi), point them at the bundled skill manually if you want the same instructions:
+<Callout type="info">
+OpenCode also reads `~/.claude/skills/` natively, so users who have both Claude Code and OpenCode get the skill via the Claude path automatically.
+</Callout>
+
+### Agents without a SKILL.md auto-loader
+
+Cursor, Hermes, and Pi each use a single-file system prompt (different format) instead of a skills directory. We don't auto-wire these because:
+
+- **Cursor** (`~/.cursor/rules/*.mdc`): rules expect a different frontmatter shape (`description`/`globs`/`alwaysApply`), not Anthropic's `name`/`description`. Symlinking the SKILL.md as `.mdc` works but the frontmatter renders as a noisy comment block.
+- **Hermes** (`~/.hermes/SOUL.md`) and **Pi** (`~/.pi/agent/SYSTEM.md`): replace the entire system prompt — symlinking would clobber any custom prompt you've set.
+
+For these, paste the skill content manually into whatever instructions file the agent uses:
 
 ```bash
-cat /Applications/CuaDriver.app/Contents/Resources/Skills/cua-driver/SKILL.md
+cat /Applications/CuaDriver.app/Contents/Resources/Skills/cua-driver/SKILL.md | pbcopy
 ```
-
-You can paste it into the agent's system prompt, instructions file, or whatever per-project context mechanism the agent uses (e.g. Cursor's `.cursorrules`, project-level `AGENTS.md`).
 
 ## Uninstall
 

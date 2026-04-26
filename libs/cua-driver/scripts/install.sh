@@ -132,15 +132,26 @@ log "symlinked $BIN_LINK -> $APP_BINARY"
 
 # --- Install agent skill pack -------------------------------------------
 #
-# Drop a symlink for each detected agent that auto-loads SKILL.md skills:
-#   - Claude Code: scans ~/.claude/skills/ on startup
-#   - Codex     : scans ~/.agents/skills/ on startup (Codex adopted Anthropic's
-#                 SKILL.md format; the "agents" path is shared, not Codex-specific)
+# Drop a symlink for each detected agent that auto-loads Anthropic-format
+# SKILL.md skills from a folder. Auto-updates atomically replace
+# /Applications/CuaDriver.app so the symlinks stay valid across releases.
+# We never overwrite an existing link or directory — dev users with a
+# symlink pointing at a working copy of the repo keep theirs.
 #
-# Auto-updates atomically replace /Applications/CuaDriver.app so the symlinks
-# stay valid across every release. We never overwrite an existing link or
-# directory — dev users with a symlink pointing at a working copy of the repo
-# keep theirs.
+# Supported (folder-of-skills, frontmatter compatible):
+#   - Claude Code: scans ~/.claude/skills/ on startup
+#   - Codex     : scans ~/.agents/skills/ on startup
+#   - OpenClaw  : scans ~/.openclaw/skills/
+#   - OpenCode  : scans ~/.config/opencode/skills/ (also reads ~/.claude/skills/
+#                 natively, so the Claude Code symlink covers OpenCode for users
+#                 who have both)
+#
+# Not auto-wired (different file format / would clobber user state):
+#   - Cursor: rules use a different frontmatter shape (description/globs/
+#             alwaysApply) — paste manually into ~/.cursor/rules/.
+#   - Hermes: SOUL.md replaces the system prompt — overwriting would destroy
+#             user customisations.
+#   - Pi    : SYSTEM.md / AGENTS.md are single-file replacements; same risk.
 
 SKILL_TARGET="$APP_DEST/Contents/Resources/Skills/cua-driver"
 
@@ -173,6 +184,20 @@ if [[ -d "$HOME/.codex" ]] && [[ ! -d "$HOME/.agents/skills" ]]; then
     mkdir -p "$HOME/.agents/skills"
 fi
 link_skill_into "$HOME/.agents/skills" "Codex"
+
+# OpenClaw — create ~/.openclaw/skills if OpenClaw is installed but the
+# skills dir hasn't been initialized yet, then link.
+if [[ -d "$HOME/.openclaw" ]] && [[ ! -d "$HOME/.openclaw/skills" ]]; then
+    mkdir -p "$HOME/.openclaw/skills"
+fi
+link_skill_into "$HOME/.openclaw/skills" "OpenClaw"
+
+# OpenCode (sst/opencode) — create ~/.config/opencode/skills if OpenCode is
+# installed but the skills dir hasn't been initialized yet, then link.
+if [[ -d "$HOME/.config/opencode" ]] && [[ ! -d "$HOME/.config/opencode/skills" ]]; then
+    mkdir -p "$HOME/.config/opencode/skills"
+fi
+link_skill_into "$HOME/.config/opencode/skills" "OpenCode"
 
 # --- Done ---------------------------------------------------------------
 
