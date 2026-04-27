@@ -34,6 +34,7 @@ public struct ToolRegistry: Sendable {
     public static let actionToolNames: Set<String> = [
         "click",
         "right_click",
+        "drag",
         "scroll",
         "type_text",
         "type_text_chars",
@@ -230,6 +231,7 @@ public struct ToolRegistry: Sendable {
         ClickTool.handler,
         DoubleClickTool.handler,
         RightClickTool.handler,
+        DragTool.handler,
         SetValueTool.handler,
         SetAgentCursorEnabledTool.handler,
         SetAgentCursorMotionTool.handler,

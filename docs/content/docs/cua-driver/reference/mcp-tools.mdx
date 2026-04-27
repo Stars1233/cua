@@ -186,6 +186,26 @@ Right-click by element (routes through `AXShowMenu`) or by pixel.
 {"pid": 844, "window_id": 10725, "element_index": 7}
 ```
 
+### drag
+
+Press-drag-release gesture between two pixel endpoints. macOS AX has no semantic drag action, so this is pixel-only — there is no element-indexed mode. Use it for marquee/lasso selection, drag-and-drop, slider scrubbing, resize handles, panel repositioning. Frontmost target: posts via `.cghidEventTap` (real cursor traces the path; required for AppKit drag sources / canvas viewports). Backgrounded target: posts via the auth-signed pid-routed path (cursor-neutral).
+
+**Arguments:**
+
+- `pid` (integer, required): Target process ID.
+- `from_x`, `from_y` (number, required): Drag-start in window-local screenshot pixels (top-left origin).
+- `to_x`, `to_y` (number, required): Drag-end in the same space.
+- `window_id` (integer, optional): CGWindowID the pixels were measured against. Defaults to the frontmost window of `pid`.
+- `duration_ms` (integer, optional): Wall-clock budget for the path between mouseDown and mouseUp. Default: `500`.
+- `steps` (integer, optional): Number of intermediate `mouseDragged` events linearly interpolated along the path. Default: `20`.
+- `modifier` (array of string, optional): `cmd` / `shift` / `option` / `ctrl`. Held across the entire gesture (option-drag duplicates, shift-drag constrains the axis).
+- `button` (string, optional): `left` / `right` / `middle`. Default: `left`.
+- `from_zoom` (boolean, optional): When true, all four coordinates are in the last `zoom` image's pixel space.
+
+```json
+{"pid": 844, "window_id": 10725, "from_x": 100, "from_y": 200, "to_x": 400, "to_y": 200, "duration_ms": 600}
+```
+
 ### move_cursor
 
 Warp the real mouse cursor to a screen-point coordinate. Does not click.
