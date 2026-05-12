@@ -183,7 +183,8 @@ jobs:
           chmod +x scripts/build/build-release-notarized.sh
           cd scripts/build
           LOG_LEVEL=minimal ./build-release-notarized.sh
-          cd ../..
+          # scripts/build is two levels deep inside libs/cua-driver; go back once.
+          cd ..
 
           # Replace the single-arch binary inside the .app with the universal one.
           APP_BINARY=".release/CuaDriver.app/Contents/MacOS/cua-driver"
@@ -220,8 +221,10 @@ jobs:
           X86_TAR="cua-driver-${VERSION}-darwin-x86_64.tar.gz"
           UNIVERSAL_TAR="cua-driver-${VERSION}-darwin-universal.tar.gz"
 
-          # Rename existing tarball to arm64 if needed
-          EXISTING=$(ls cua-driver-${VERSION}-darwin-*.tar.gz 2>/dev/null | head -1)
+          # Rename existing tarball to arm64 if needed.
+          # Exclude *.pkg.tar.gz — they end in .tar.gz too and sort first,
+          # which caused the pkg tarball to overwrite the app tarball.
+          EXISTING=$(ls cua-driver-"${VERSION}"-darwin-*.tar.gz 2>/dev/null | grep -v '\.pkg\.tar\.gz' | head -1)
           if [ -n "$EXISTING" ] && [ "$EXISTING" != "$ARM64_TAR" ]; then
             mv "$EXISTING" "$ARM64_TAR"
           fi
@@ -285,25 +288,42 @@ jobs:
             echo "Warning: binary not found at $BINARY"
           fi
 
+      # .release/ is in .gitignore, so actions/upload-artifact's @actions/glob
+      # would exclude every file inside it. Stage the release artifacts in a
+      # git-tracked directory so the glob finds them.
+      - name: Stage release artifacts for upload
+        env:
+          VERSION: ${{ steps.set_version.outputs.version }}
+        run: |
+          mkdir -p .release-upload
+          cp libs/cua-driver/.release/cua-driver-"${VERSION}"-darwin-*.tar.gz \
+             libs/cua-driver/.release/cua-driver-"${VERSION}"-darwin-*.pkg.tar.gz \
+             .release-upload/ 2>/dev/null || true
+          # Bare binary (may not exist if the .app binary was missing)
+          cp libs/cua-driver/.release/cua-driver-"${VERSION}"-darwin-universal-binary.tar.gz \
+             .release-upload/ 2>/dev/null || true
+          echo "Staged files:"
+          ls -lh .release-upload/
+
       - name: Upload Notarized Package (Tarball)
         uses: actions/upload-artifact@v4
         with:
           name: cua-driver-notarized-tarball
-          path: ./libs/cua-driver/.release/cua-driver-*-darwin-*.tar.gz
+          path: .release-upload/cua-driver-*-darwin-*.tar.gz
           if-no-files-found: error
 
       - name: Upload Notarized Package (Installer)
         uses: actions/upload-artifact@v4
         with:
           name: cua-driver-notarized-installer
-          path: ./libs/cua-driver/.release/cua-driver-*-darwin-*.pkg.tar.gz
+          path: .release-upload/cua-driver-*-darwin-*.pkg.tar.gz
           if-no-files-found: error
 
       - name: Upload Bare Binary
         uses: actions/upload-artifact@v4
         with:
           name: cua-driver-bare-binary
-          path: ./libs/cua-driver/.release/cua-driver-*-binary.tar.gz
+          path: .release-upload/cua-driver-*-binary.tar.gz
           if-no-files-found: warn
 
       - name: Generate path-filtered release notes
@@ -338,14 +358,12 @@ jobs:
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/cua-driver-v')
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           files: |
-            ./libs/cua-driver/.release/cua-driver-*-darwin-*.tar.gz
-            ./libs/cua-driver/.release/cua-driver-*-darwin-*.pkg.tar.gz
-            ./libs/cua-driver/.release/cua-driver-darwin.tar.gz
-            ./libs/cua-driver/.release/cua-driver.tar.gz
-            ./libs/cua-driver/.release/cua-driver-binary.tar.gz
+            .release-upload/cua-driver-*-darwin-*.tar.gz
+            .release-upload/cua-driver-*-darwin-*.pkg.tar.gz
+            .release-upload/cua-driver-*-binary.tar.gz
           body: |
             ${{ steps.release-notes.outputs.RELEASE_NOTES }}
 
