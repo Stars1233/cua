@@ -309,14 +309,19 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cua-driver-notarized-tarball
-          path: .release-upload/cua-driver-*-darwin-*.tar.gz
+          # Single-wildcard glob — double-star patterns are unreliable in
+          # @actions/glob. Exclude .pkg.tar.gz with a negation pattern since
+          # those also end in .tar.gz.
+          path: |
+            .release-upload/*.tar.gz
+            !.release-upload/*.pkg.tar.gz
           if-no-files-found: error
 
       - name: Upload Notarized Package (Installer)
         uses: actions/upload-artifact@v4
         with:
           name: cua-driver-notarized-installer
-          path: .release-upload/cua-driver-*-darwin-*.pkg.tar.gz
+          path: .release-upload/*.pkg.tar.gz
           if-no-files-found: error
 
       - name: Upload Bare Binary
@@ -361,9 +366,8 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            .release-upload/cua-driver-*-darwin-*.tar.gz
-            .release-upload/cua-driver-*-darwin-*.pkg.tar.gz
-            .release-upload/cua-driver-*-binary.tar.gz
+            .release-upload/*.tar.gz
+            .release-upload/*.pkg.tar.gz
           body: |
             ${{ steps.release-notes.outputs.RELEASE_NOTES }}
 
