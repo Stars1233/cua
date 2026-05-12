@@ -183,8 +183,8 @@ jobs:
           chmod +x scripts/build/build-release-notarized.sh
           cd scripts/build
           LOG_LEVEL=minimal ./build-release-notarized.sh
-          # scripts/build is two levels deep inside libs/cua-driver; go back once.
-          cd ..
+          # Return from libs/cua-driver/scripts/build back to libs/cua-driver
+          cd ../..
 
           # Replace the single-arch binary inside the .app with the universal one.
           APP_BINARY=".release/CuaDriver.app/Contents/MacOS/cua-driver"
