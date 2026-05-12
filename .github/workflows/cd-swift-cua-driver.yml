@@ -295,15 +295,15 @@ jobs:
         env:
           VERSION: ${{ steps.set_version.outputs.version }}
         run: |
-          mkdir -p .release-upload
+          mkdir -p release-upload
           cp libs/cua-driver/.release/cua-driver-"${VERSION}"-darwin-*.tar.gz \
              libs/cua-driver/.release/cua-driver-"${VERSION}"-darwin-*.pkg.tar.gz \
-             .release-upload/ 2>/dev/null || true
+             release-upload/ 2>/dev/null || true
           # Bare binary (may not exist if the .app binary was missing)
           cp libs/cua-driver/.release/cua-driver-"${VERSION}"-darwin-universal-binary.tar.gz \
-             .release-upload/ 2>/dev/null || true
+             release-upload/ 2>/dev/null || true
           echo "Staged files:"
-          ls -lh .release-upload/
+          ls -lh release-upload/
 
       - name: Upload Notarized Package (Tarball)
         uses: actions/upload-artifact@v4
@@ -313,22 +313,22 @@ jobs:
           # @actions/glob. Exclude .pkg.tar.gz with a negation pattern since
           # those also end in .tar.gz.
           path: |
-            .release-upload/*.tar.gz
-            !.release-upload/*.pkg.tar.gz
+            release-upload/*.tar.gz
+            !release-upload/*.pkg.tar.gz
           if-no-files-found: error
 
       - name: Upload Notarized Package (Installer)
         uses: actions/upload-artifact@v4
         with:
           name: cua-driver-notarized-installer
-          path: .release-upload/*.pkg.tar.gz
+          path: release-upload/*.pkg.tar.gz
           if-no-files-found: error
 
       - name: Upload Bare Binary
         uses: actions/upload-artifact@v4
         with:
           name: cua-driver-bare-binary
-          path: .release-upload/cua-driver-*-binary.tar.gz
+          path: release-upload/cua-driver-*-binary.tar.gz
           if-no-files-found: warn
 
       - name: Generate path-filtered release notes
@@ -366,8 +366,8 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            .release-upload/*.tar.gz
-            .release-upload/*.pkg.tar.gz
+            release-upload/*.tar.gz
+            release-upload/*.pkg.tar.gz
           body: |
             ${{ steps.release-notes.outputs.RELEASE_NOTES }}
 
