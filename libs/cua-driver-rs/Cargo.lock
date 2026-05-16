@@ -220,6 +220,7 @@ dependencies = [
  "base64",
  "cursor-overlay",
  "image",
+ "libc",
  "mcp-server",
  "platform-linux",
  "platform-macos",

@@ -1149,6 +1149,161 @@ Swift.
 
 ---
 
+## CLI subcommand: `mcp` (TCC auto-relaunch / daemon proxy)
+- Swift:
+  - `libs/cua-driver/Sources/CuaDriverCLI/CuaDriverCommand.swift` —
+    `MCPCommand`, `shouldUseDaemonProxy`, `runViaDaemonProxy`,
+    `launchDaemonViaOpen`, `waitForDaemon`.
+  - `libs/cua-driver/Sources/CuaDriverCLI/BundleHelpers.swift` —
+    `isExecutableInsideCuaDriverApp()`.
+  - `libs/cua-driver/Sources/CuaDriverServer/CuaDriverMCPServer.swift` —
+    `makeProxy` (the actor that re-implements `ListTools` /
+    `CallTool` over the daemon UDS).
+- Rust:
+  - `libs/cua-driver-rs/crates/cua-driver/src/bundle.rs` —
+    `is_executable_inside_cuadriverrs_app`,
+    `parent_is_not_launchd`, `is_env_truthy`.
+  - `libs/cua-driver-rs/crates/cua-driver/src/cli.rs` —
+    `should_use_daemon_proxy`, `launch_daemon_and_wait`,
+    `run_mcp_via_daemon_proxy`.
+  - `libs/cua-driver-rs/crates/cua-driver/src/proxy.rs` —
+    `run_proxy` (the stdio loop forwarding `tools/list` and
+    `tools/call` through the daemon socket).
+  - `libs/cua-driver-rs/scripts/CuaDriverRs.app/Contents/Info.plist` —
+    the bundle the auto-relaunch path lands in.
+  - `libs/cua-driver-rs/scripts/install.sh` — drops the bundle to
+    `/Applications/CuaDriverRs.app` and symlinks the bin into it.
+- Status: implemented on macOS (issue #1525); smoke-tested manually
+  before merge.
+
+### Why this exists
+When `cua-driver-rs mcp` is invoked from an IDE terminal (Claude
+Code, Cursor, VS Code, Warp), macOS attributes the spawned process
+to the parent terminal's TCC responsibility chain — *not* to
+`com.trycua.cuadriverrs`. AX probes against the process silently
+fail because the user granted Accessibility to the bundle, not to
+the IDE terminal. The Swift driver hit the same pathology and fixed
+it in PR #1479; the Rust port hit it on the macOS GA flip path and
+fixed it here. See issue #1525 for the full background.
+
+### Bundle id divergence (intentional)
+Swift `CuaDriver.app` → `com.trycua.driver`.
+Rust `CuaDriverRs.app` → `com.trycua.cuadriverrs`.
+The two bundles coexist on disk and in TCC; a user can grant
+Accessibility + Screen Recording to each independently. The Rust
+port has its own bundle name + identifier so:
+  - `open -n -g -a CuaDriverRs --args serve` never accidentally
+    relaunches into the Swift bundle (and vice versa).
+  - TCC grants are per-cdhash, so granting one doesn't carry into
+    the other — users explicitly opt in to each binary.
+
+### Escape hatches
+- `--no-daemon-relaunch` flag — same flag Swift exposes.
+- `CUA_DRIVER_RS_MCP_NO_RELAUNCH=1` env var — Rust-specific name
+  (Swift uses `CUA_DRIVER_MCP_NO_RELAUNCH`).
+- `--socket <path>` flag — override the daemon UDS path used by the
+  proxy.
+- `CUA_DRIVER_RS_MCP_FORCE_PROXY=1` env var (Rust-only) — force
+  proxy mode without the bundle-context check. Useful when wrapping
+  the binary in a custom .app, or for manual smoke-testing of the
+  proxy path against a daemon you've already started by hand. Skips
+  the `open -a` step entirely; caller must supply a daemon on
+  `--socket`.
+
+### Daemon protocol divergence
+The daemon's `list` method now returns full `ToolDef`
+(`input_schema` + annotation hints), not just `{name, description}`.
+The proxy uses this to build a complete `tools/list` from one
+round-trip instead of N+1 list+describe calls. Backwards compatible:
+older clients that only read name/description still work.
+
+### Manual smoke test (macOS)
+1. `cua-driver serve --socket /tmp/test.sock &`
+2. `CUA_DRIVER_RS_MCP_FORCE_PROXY=1 cua-driver mcp --socket /tmp/test.sock`
+3. From an MCP client, run the standard initialize → tools/list →
+   tools/call get_screen_size handshake. Expect identical envelope
+   shape to the in-process path. Concretely:
+
+   `tools/list` response (the daemon caches and returns it once at
+   proxy startup — same shape as the in-process server's `tools/list`):
+
+   ```json
+   {
+     "jsonrpc": "2.0",
+     "id": 1,
+     "result": {
+       "tools": [
+         { "name": "browser_eval",            "description": "…", "inputSchema": {…}, "annotations": {…} },
+         { "name": "check_permissions",       "description": "…", "inputSchema": {…}, "annotations": {…} },
+         { "name": "click",                   "description": "…", "inputSchema": {…}, "annotations": {…} },
+         { "name": "double_click",            "…": "…" },
+         { "name": "drag",                    "…": "…" },
+         { "name": "get_accessibility_tree",  "…": "…" },
+         { "name": "get_config",              "…": "…" },
+         { "name": "get_cursor_position",     "…": "…" },
+         { "name": "get_recording_state",     "…": "…" },
+         { "name": "get_screen_size",         "…": "…" },
+         { "name": "get_window_state",        "…": "…" },
+         { "name": "hotkey",                  "…": "…" },
+         { "name": "launch_app",              "…": "…" },
+         { "name": "list_apps",               "…": "…" },
+         { "name": "list_windows",            "…": "…" },
+         { "name": "page",                    "…": "…" },
+         { "name": "press_key",               "…": "…" },
+         { "name": "replay_trajectory",       "…": "…" },
+         { "name": "right_click",             "…": "…" },
+         { "name": "screenshot",              "…": "…" },
+         { "name": "scroll",                  "…": "…" },
+         { "name": "set_config",              "…": "…" },
+         { "name": "set_recording",           "…": "…" },
+         { "name": "set_value",               "…": "…" },
+         { "name": "type_text",               "…": "…" },
+         { "name": "zoom",                    "…": "…" }
+         // …plus the agent_cursor.* family when overlay is enabled.
+         // For an exact snapshot run: `cua-driver list-tools`
+       ]
+     }
+   }
+   ```
+
+   `tools/call get_screen_size` request + response:
+
+   ```json
+   // → stdin
+   {"jsonrpc":"2.0","id":2,"method":"tools/call",
+    "params":{"name":"get_screen_size","arguments":{}}}
+
+   // ← stdout
+   {"jsonrpc":"2.0","id":2,"result":{
+     "content":[{"type":"text","text":"{\"width\":1920,\"height\":1080}"}],
+     "structuredContent":{"width":1920,"height":1080},
+     "isError":false
+   }}
+   ```
+
+   The `result` envelope is identical to the in-process path —
+   structuredContent + text mirror, no proxy-specific wrapping.
+
+4. Without spawning the daemon first, repeat step 2. Expect
+   non-zero exit and a "daemon not reachable" diagnostic on stderr
+   (the fail-fast contract that matches Swift `makeProxy`). Exact
+   stderr text emitted by `main.rs`'s proxy-error branch (wrapping
+   `proxy::run_proxy`'s pre-check):
+
+   ```
+   cua-driver-rs: cua-driver-rs daemon not reachable on /tmp/test.sock. Start it with `open -n -g -a CuaDriverRs --args serve` and retry.
+   ```
+
+   Process exits with status `1` before reading any MCP request on
+   stdin. With `CUA_DRIVER_RS_MCP_FORCE_PROXY=1` set, `cli.rs`'s
+   `run_mcp_via_daemon_proxy` emits the more specific:
+
+   ```
+   cua-driver-rs: CUA_DRIVER_RS_MCP_FORCE_PROXY=1 but no daemon listening on /tmp/test.sock. Start one with `cua-driver serve --socket /tmp/test.sock` and retry.
+   ```
+
+---
+
 ## CLI subcommands: `status` + `stop`
 - Swift: `libs/cua-driver/Sources/CuaDriverCLI/ServeCommand.swift:368-470`
 - Rust: `libs/cua-driver-rs/crates/cua-driver/src/serve.rs::run_status_cmd, run_stop_cmd`
