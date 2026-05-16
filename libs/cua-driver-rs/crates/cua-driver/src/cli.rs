@@ -58,6 +58,13 @@ pub enum Command {
         value: Option<String>,
         socket: Option<String>,
     },
+    /// Hidden subcommand used by `scripts/install.sh` to emit the
+    /// one-shot `cua_driver_install` PostHog event. Bypasses the
+    /// opt-out flag (the only call site that does so) so we get a
+    /// usable adoption signal even from users who opt out immediately
+    /// after install. Subsequent runs see the `.installation_recorded`
+    /// marker file and become no-ops.
+    TelemetryInstallEvent,
 }
 
 /// Flags whose next token is a value (not a subcommand).
@@ -161,6 +168,17 @@ pub fn parse_command() -> Command {
                 .and_then(|s| serde_json::from_str(s).ok())
                 .or_else(|| read_stdin_json());
             Command::Call { tool, json_args, screenshot_out_file }
+        }
+        Some("telemetry") => {
+            // Hidden — used by install.sh. Only supports `install-event`
+            // today; left extensible (e.g. future `telemetry status`).
+            match pos.next() {
+                Some("install-event") => Command::TelemetryInstallEvent,
+                _ => {
+                    eprintln!("Usage: cua-driver telemetry install-event");
+                    process::exit(64);
+                }
+            }
         }
         Some(first) => {
             // Implicit call: unrecognised first positional → treat as tool name.
@@ -1451,6 +1469,130 @@ fn read_stdin_json() -> Option<serde_json::Value> {
     let mut buf = String::new();
     stdin.lock().read_to_string(&mut buf).ok()?;
     serde_json::from_str(buf.trim()).ok()
+}
+
+/// Map a parsed [`Command`] to its canonical telemetry event name.
+///
+/// Mirrors Swift's `CuaDriverCommand.telemetryEntryEvent(for:)`. Per-tool
+/// `call <tool>` invocations report as `cua_driver_api_<tool>` so per-tool
+/// usage shows up in aggregate without our ever recording the args.
+///
+/// Returns `None` for [`Command::TelemetryInstallEvent`] — that path emits
+/// the install event directly via [`crate::telemetry::capture_install`]
+/// instead of a per-entry event.
+pub fn telemetry_entry_event(cmd: &Command) -> Option<String> {
+    use crate::telemetry::event;
+    let name = match cmd {
+        Command::Mcp { .. } => event::MCP.to_owned(),
+        Command::Serve { .. } => event::SERVE.to_owned(),
+        Command::Stop { .. } => event::STOP.to_owned(),
+        Command::Status { .. } => event::STATUS.to_owned(),
+        Command::ListTools => event::LIST_TOOLS.to_owned(),
+        Command::Describe(_) => event::DESCRIBE.to_owned(),
+        // `call <tool>` → per-tool event (no args, just the tool name).
+        // The tool name flows into the PostHog event name, so we sanitize
+        // it aggressively (see `sanitize_tool_name`) before concatenation —
+        // otherwise weird / path-like / non-ASCII tool names would pollute
+        // dashboards and could even leak user-controlled strings into
+        // telemetry event names.
+        Command::Call { tool, .. } => {
+            if tool.is_empty() {
+                event::CALL.to_owned()
+            } else {
+                format!("{}{}", event::API_PREFIX, sanitize_tool_name(tool))
+            }
+        }
+        Command::McpConfig { .. } => "cua_driver_mcp_config".to_owned(),
+        Command::Recording { .. } => event::RECORDING.to_owned(),
+        Command::Config { .. } => event::CONFIG.to_owned(),
+        Command::DumpDocs { .. } => "cua_driver_dump_docs".to_owned(),
+        Command::Update { .. } => "cua_driver_update".to_owned(),
+        Command::Doctor => "cua_driver_doctor".to_owned(),
+        Command::Diagnose => "cua_driver_diagnose".to_owned(),
+        Command::TelemetryInstallEvent => return None,
+    };
+    Some(name)
+}
+
+/// Normalise a user-provided tool name into a safe PostHog event suffix.
+///
+/// Tool names are concatenated onto `cua_driver_api_` to build per-tool
+/// telemetry event names. The raw string is user-controlled (any CLI
+/// arg or MCP request can specify it), so we:
+///
+/// 1. ASCII-lowercase
+/// 2. Keep only `[a-z0-9_]` — drop punctuation, slashes, dots, anything else
+/// 3. Truncate to 64 chars (event names are a dashboard axis, not free text)
+/// 4. Fall back to `"unknown"` when the result is empty (e.g. all non-ASCII
+///    input), so we still record *that* a call happened without inventing
+///    a per-payload event name.
+fn sanitize_tool_name(name: &str) -> String {
+    const MAX_LEN: usize = 64;
+    const FALLBACK: &str = "unknown";
+
+    let cleaned: String = name
+        .chars()
+        .filter_map(|c| {
+            let lc = c.to_ascii_lowercase();
+            if lc.is_ascii_alphanumeric() || lc == '_' {
+                Some(lc)
+            } else {
+                None
+            }
+        })
+        .take(MAX_LEN)
+        .collect();
+
+    if cleaned.is_empty() {
+        FALLBACK.to_owned()
+    } else {
+        cleaned
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sanitize_tool_name_passes_through_canonical_names() {
+        assert_eq!(sanitize_tool_name("click"), "click");
+        assert_eq!(sanitize_tool_name("move_mouse"), "move_mouse");
+        assert_eq!(sanitize_tool_name("ScrollUp"), "scrollup");
+    }
+
+    #[test]
+    fn sanitize_tool_name_strips_punctuation_and_path_separators() {
+        // Path-like input would otherwise leak directory names into event
+        // names — strip everything that's not [a-z0-9_].
+        assert_eq!(sanitize_tool_name("foo.bar/baz"), "foobarbaz");
+        assert_eq!(sanitize_tool_name("../etc/passwd"), "etcpasswd");
+        assert_eq!(sanitize_tool_name("click-element!"), "clickelement");
+    }
+
+    #[test]
+    fn sanitize_tool_name_falls_back_when_non_ascii() {
+        // Non-ASCII characters are dropped entirely — without a fallback
+        // we'd emit `cua_driver_api_` (empty suffix), which collides with
+        // the bare `cua_driver_call` event.
+        assert_eq!(sanitize_tool_name("クリック"), "unknown");
+        assert_eq!(sanitize_tool_name("🚀"), "unknown");
+    }
+
+    #[test]
+    fn sanitize_tool_name_falls_back_on_empty_or_all_stripped() {
+        assert_eq!(sanitize_tool_name(""), "unknown");
+        assert_eq!(sanitize_tool_name("---"), "unknown");
+        assert_eq!(sanitize_tool_name("///"), "unknown");
+    }
+
+    #[test]
+    fn sanitize_tool_name_caps_length_at_64() {
+        let long_name = "a".repeat(200);
+        let sanitized = sanitize_tool_name(&long_name);
+        assert_eq!(sanitized.len(), 64);
+        assert!(sanitized.chars().all(|c| c == 'a'));
+    }
 }
 
 fn first_sentence(text: &str) -> String {
